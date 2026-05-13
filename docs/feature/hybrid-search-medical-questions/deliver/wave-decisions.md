@@ -11,8 +11,8 @@
 | ID | Decision | Why | Reference |
 |---|---|---|---|
 | DLV-1 | Skip DES Python instrumentation for this TypeScript PoC | `des-init-log` / `des-verify-integrity` are Python-centric step-tracking tools; adapting to TS would consume budget disproportionate to value. 6 atomic git commits + green acceptance suite serve as the audit trail. | nw-deliver skill spec; cost-benefit judgment |
-| DLV-2 | Skip L1-L6 refactoring pass | Code is already clean enough for interview review. Refactor budget would be better spent on a Mastra adoption if Mastra ships Zod-4 compat. | Take-home scope; "not perfect production code" per Netea evaluation criteria |
-| DLV-3 | Skip mutation testing | 80% kill-rate gate is production discipline. Mutmut-on-TS would burn ~30 min for marginal interview signal. | Take-home scope |
+| DLV-2 | Skip L1-L6 refactoring pass | Code is already clean enough for stakeholder review. Refactor budget would be better spent on a Mastra adoption if Mastra ships Zod-4 compat. | PoC scope; "not perfect production code" per evaluation criteria |
+| DLV-3 | Skip mutation testing | 80% kill-rate gate is production discipline. Mutmut-on-TS would burn ~30 min for marginal PoC signal. | PoC scope |
 | DLV-4 | Skip adversarial review (`/nw-software-crafter-reviewer`) | Sentinel review at end of DISTILL covered contracts; per-step crafter verification + green acceptance suite are sufficient quality gates. | DISTILL final review gate covered the upstream chain |
 | DLV-5 | Use AI SDK 6 `streamText` directly (NOT Mastra Agent) at runtime | `@mastra/core@1.33.0` transitively requires `@ai-sdk/ui-utils@1.2.11` with peer `zod@^3.23.8`; the project uses `zod@4.4.3`. Mastra is installed for forward-compatibility but the chat path uses AI SDK direct. | ENRICH-DELIVER-01; brief.md §1.8.4; `apps/api/src/app.ts` |
 | DLV-6 | Use Zod-4 native `z.toJSONSchema()` (NOT `zod-to-json-schema`) | Zod 4 ships native JSON Schema export; AI SDK 6's `generateObject` consumes Zod schemas directly. Drops one transitive dep + one drift surface. | ADR-010 (corrected); `packages/schemas/src/enrichment.ts` |

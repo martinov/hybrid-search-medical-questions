@@ -51,6 +51,23 @@ export const SYSTEM_PROMPT = [
   "    searched for that yet'). NEVER invent a question to fill the gap. If",
   "    no prior search exists, offer to run one.",
   "",
+  // --- Formatting policy (UI polish) ------------------------------------
+  // The chat surface renders assistant replies through a markdown renderer
+  // (react-markdown + remark-gfm). Without explicit guidance the model emits
+  // inline run-on lists ("1) ... 2) ...") that read as a wall of text.
+  "Formatting policy: emit your reply as markdown so the web UI renders it",
+  "cleanly.",
+  "  - When you return more than one search result, format the list as a",
+  "    markdown ordered list: one item per line starting with `1.`, `2.`,",
+  "    etc., with a blank line between items.",
+  "  - Use **bold** for the question title, then a separate line with the",
+  "    content excerpt.",
+  "  - Use level-3 markdown headings (`###`) sparingly, only for section",
+  "    breaks between unrelated groups of results. Do NOT open a single",
+  "    bubble with a heading for the intro line.",
+  "  - Do NOT emit inline run-on lists like `1) Title... 2) Title... 3) ...`",
+  "    on a single line. Each result MUST be on its own line.",
+  "",
   // --- Zero-result recovery (Slice 06 / US-07) -------------------------
   "Zero-Result Policy (load-bearing for KPI #6 — anti-hallucination):",
   "  - If `searchQuestions` returns `kind: \"no_match\"`, you MUST acknowledge",

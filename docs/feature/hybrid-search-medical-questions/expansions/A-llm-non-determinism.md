@@ -4,7 +4,7 @@
 **Parent**: `feature-delta.md` (US-02 LLM resilience; US-03 observability; System Constraints).
 **Wave**: DISCUSS Tier-2 expansion.
 **Density**: lean + ask-intelligent.
-**Purpose**: defend the staff-level reasoning behind how this pipeline contains LLM non-determinism, so the interview discussion of US-02 / US-03 is substantive rather than templated.
+**Purpose**: defend the staff-level reasoning behind how this pipeline contains LLM non-determinism, so the design discussion of US-02 / US-03 is substantive rather than templated.
 
 This expansion does NOT introduce new requirements. It articulates the *why* behind the resilience policy already locked in `feature-delta.md` and points at the implementation sketch DESIGN/DELIVER will extend.
 
@@ -30,9 +30,9 @@ When the slice brief and `feature-delta.md` say "LLM responses sometimes fail sc
 
 A one-bucket retry policy collapses these into noise. A taxonomy-aware policy lets us reason about retry budget separately from validation rate, which is exactly what US-02 and US-03 separate.
 
-### What this implies for the interview discussion
+### What this implies in design discussions
 
-When the reviewer asks "what's your retry policy", the answer is not "two retries with exponential backoff". The answer is "three retry regimes — schema-retry for F1/F2/F3/F5/F6, transport-retry for 429/5xx/network, no-retry-quarantine for F7 — and the schema-retry budget is independent of the transport-retry budget" (this is why `feature-delta.md` US-02 AC explicitly says "Transient errors (429, 5xx, network) are retried separately from schema-retry budget").
+When asked "what's your retry policy", the answer is not "two retries with exponential backoff". The answer is "three retry regimes — schema-retry for F1/F2/F3/F5/F6, transport-retry for 429/5xx/network, no-retry-quarantine for F7 — and the schema-retry budget is independent of the transport-retry budget" (this is why `feature-delta.md` US-02 AC explicitly says "Transient errors (429, 5xx, network) are retried separately from schema-retry budget").
 
 ---
 
@@ -79,7 +79,7 @@ The pipeline holds five layers between an LLM call and a write to `enriched_ques
 
 - **Schema in the prompt body**: even when using OpenAI Structured Outputs, restate the schema and the enum values in plain text inside the system prompt. The model needs to *see* the enum to align its sampling. This is empirically what reduces F3 (enum near-misses).
 - **Few-shot exemplars**: 2-3 worked examples of `{question -> enriched JSON}` pairs covering different specialties (cardio, endocrine, neuro) and different Bloom levels. Place them in the system prompt, not the user message; this keeps the user message clean for batched ingestion.
-- **Temperature 0 for enrichment**: enrichment is not creative writing; it is classification + extraction. `temperature = 0` is correct here. The interviewer may ask "isn't temperature 0 deterministic?" — the honest answer is "no, OpenAI's `temperature=0` is *low-entropy*, not deterministic; backend nondeterminism (model versioning, MoE routing, KV cache behavior) means identical inputs can produce different outputs across calls. This is precisely why we still need Zod and quarantine."
+- **Temperature 0 for enrichment**: enrichment is not creative writing; it is classification + extraction. `temperature = 0` is correct here. The natural pushback — "isn't temperature 0 deterministic?" — gets the honest answer: "no, OpenAI's `temperature=0` is *low-entropy*, not deterministic; backend nondeterminism (model versioning, MoE routing, KV cache behavior) means identical inputs can produce different outputs across calls. This is precisely why we still need Zod and quarantine."
 - **Model selection rationale**: `gpt-4o-mini` for enrichment. Cheap enough to be defensible at scale (see Expansion E), capable enough for structured medical classification when paired with Structured Outputs + few-shot. If we observe sustained F4 (off-by-one Bloom) rates above some threshold (say 15%), the lever is to upgrade the *enrichment* model to `gpt-4o`, NOT to add more retries — because F4 is not retryable.
 
 ### Layer 2: Transport-side
@@ -153,7 +153,7 @@ Why this is the right shape: dropping the record silently means data loss with n
 
 ## 3. Decision matrix: retry vs. quarantine vs. accept-with-warning
 
-Per failure kind, the policy is not uniform. This table is what defends US-02's design in the interview.
+Per failure kind, the policy is not uniform. This table is what defends US-02's design.
 
 | Failure kind | Detection layer | Retry? | If retry exhausted | Notes |
 |---|---|---|---|---|
@@ -210,11 +210,11 @@ Stage 3 — flip read mode. Once re-enrichment completes for >99% of the corpus,
 
 Stage 4 — drop legacy enum values. `ALTER TYPE ... RENAME VALUE` (Postgres 12+) or recreate the column type. This is the only destructive step and it happens after the corpus has been validated 6-level-only.
 
-The honest interview answer is: "we never do a flag-day cutover on the corpus; every schema change is a multi-stage migration with a dual-read window. The `prompt_version` column makes this safe."
+The honest answer is: "we never do a flag-day cutover on the corpus; every schema change is a multi-stage migration with a dual-read window. The `prompt_version` column makes this safe."
 
 ### Why this isn't over-engineered for a PoC
 
-It isn't *built* in the PoC. The PoC stores `prompt_version` on every row and stops there. The expansion shows the path is clear; DESIGN can decide whether to put any of stages 1-4 into Release 3+. The point for the interview discussion is to demonstrate the foundation is migration-ready, not migration-implemented.
+It isn't *built* in the PoC. The PoC stores `prompt_version` on every row and stops there. The expansion shows the path is clear; DESIGN can decide whether to put any of stages 1-4 into Release 3+. The point is to demonstrate the foundation is migration-ready, not migration-implemented.
 
 ---
 
@@ -310,9 +310,9 @@ What's intentionally *not* in this sketch and belongs to DESIGN:
 
 ---
 
-## 8. Interview talking points
+## 8. Stakeholder talking points
 
-These are the questions the reviewer is most likely to ask. Each gets a one-paragraph answer that traces back to the artifact above.
+These are the questions a stakeholder is most likely to ask. Each gets a one-paragraph answer that traces back to the artifact above.
 
 ### Q1: "Why not pure JSON mode without Structured Outputs?"
 
@@ -332,7 +332,7 @@ This happens, and it's the strongest argument for the metrics in Section 6 slice
 
 ### Q5: "How do you know the Bloom labels are actually right? Zod can't tell you that."
 
-Correct — Zod validates *shape*, not *semantic correctness* (F4 in the taxonomy). The answer is a small labeled eval set: `data/seed-queries.json` for retrieval relevance (already in `feature-delta.md` US-04 KPI #3) plus a `data/bloom-eval.json` with ~30 questions hand-labeled by a medical educator (per the curriculum-designer persona — see Expansion C). The eval runs out-of-band, once per prompt change. Target ≥ 85% agreement with the hand labels (this matches the desired outcome in `jobs.yaml` under `calibrate-cognitive-difficulty`). For the PoC interview demo, the smaller seed eval is sufficient; for production we'd want a continuous eval pipeline. The honest framing: "Zod prevents bad data; the eval set prevents wrong data; they're complementary."
+Correct — Zod validates *shape*, not *semantic correctness* (F4 in the taxonomy). The answer is a small labeled eval set: `data/seed-queries.json` for retrieval relevance (already in `feature-delta.md` US-04 KPI #3) plus a `data/bloom-eval.json` with ~30 questions hand-labeled by a medical educator (per the curriculum-designer persona — see Expansion C). The eval runs out-of-band, once per prompt change. Target ≥ 85% agreement with the hand labels (this matches the desired outcome in `jobs.yaml` under `calibrate-cognitive-difficulty`). For the M0 demo, the smaller seed eval is sufficient; for production we'd want a continuous eval pipeline. The honest framing: "Zod prevents bad data; the eval set prevents wrong data; they're complementary."
 
 ---
 
@@ -357,4 +357,4 @@ What this expansion does NOT do (still belongs to DESIGN/DELIVER):
 
 | Date | Change |
 |---|---|
-| 2026-05-13 | Initial Tier-2 expansion. Failure taxonomy (F1-F7), 5-layer defense, decision matrix, prompt versioning, schema evolution, interview talking points. |
+| 2026-05-13 | Initial Tier-2 expansion. Failure taxonomy (F1-F7), 5-layer defense, decision matrix, prompt versioning, schema evolution, stakeholder talking points. |

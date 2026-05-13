@@ -9,9 +9,9 @@
 ## Context
 
 The feature (`hybrid-search-medical-questions`) must support hybrid search
-(lexical + semantic) over LLM-enriched medical exam questions. The take-home
-explicitly asks for a 2-3 option short-list comparing OpenSearch, Pinecone,
-and Postgres-class options.
+(lexical + semantic) over LLM-enriched medical exam questions. The backend
+decision requires a credible short-list (OpenSearch, Pinecone, and
+Postgres-class options) with explicit trade-offs.
 
 The DIVERGE wave scored five candidate backends across ten dimensions
 (scalability, maintenance, cost at PoC/10k/1M, time-to-PoC, hybrid quality,
@@ -21,7 +21,7 @@ captured here as the binding ADR.
 
 Constraints relevant to this decision:
 
-- **8-hour PoC budget** per the task spec. Time-to-PoC is a hard constraint.
+- **8-hour PoC budget**. Time-to-PoC is a hard constraint.
 - **Hybrid quality is the headline KPI** (KPI #3: top-3 contains a topical
   match for ≥ 80% of seed queries).
 - **Re-enrichment must be cheap** (Expansion E: migration playbook for
@@ -87,9 +87,9 @@ Specifics:
   operational concern. Mitigation: named exit to OpenSearch at M3; the
   pre-conditions to fire it are objective.
 - **Stack-fit penalty (mild)**: pgvector is not Netea's stated stack. The
-  defensible framing in the interview is "right tool for PoC scope; named
-  migration to your stated stack at M3." This is not a stack-conformance
-  exercise; it's a fit-for-purpose decision.
+  defensible framing is "right tool for PoC scope; named migration to the
+  stated stack at M3." This is not a stack-conformance exercise; it's a
+  fit-for-purpose decision.
 - **HNSW index rebuild cost**: parameter changes require a rebuild (see
   Risk R-07 in `brief.md`). Mitigation: pick parameters once at M0; use
   `CREATE INDEX CONCURRENTLY` + atomic name swap for any future change.
@@ -100,15 +100,13 @@ The DIVERGE wave scored 5 candidates. The summary:
 
 - **B. OpenSearch managed** (runner-up): native RRF via `score-ranker-processor`
   (OpenSearch 2.19+, configurable `rank_constant`, per-subquery weights);
-  task spec's lead example; Netea's stated stack. Loses on time-to-PoC
-  alone: 4-5 hours to walking skeleton would leave the staff-level work
-  under-resourced.
+  Netea's stated stack. Loses on time-to-PoC alone: 4-5 hours to walking
+  skeleton would leave the staff-level work under-resourced.
 
 - **C. Pinecone (vectors) + OpenSearch (lexical), application-side fusion**
   (killed): three systems on the critical path; dual-write tax at every
-  re-enrichment; conformance-theater risk. The task explicitly says "free
-  to choose what fits best" — choosing the bigger stack because it's
-  familiar to the interviewer is the trap to avoid.
+  re-enrichment; conformance-theater risk. Fit-for-purpose beats stack
+  conformance at PoC scope.
 
 - **D. Qdrant or Weaviate self-hosted + Postgres lexical** (cut from
   short-list, kept in matrix): genuine vector-store quality at 100k-1M

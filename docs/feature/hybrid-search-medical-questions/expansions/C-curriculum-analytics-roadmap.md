@@ -104,7 +104,7 @@ Read-only API endpoints come *before* BI tooling so that the data shape is inter
 
 BI tools give the curriculum team self-service *before* engineering invests in a bespoke dashboard. If the BI views answer 80% of questions, M3 may never be needed. Avoiding M3 is a win, not a loss. This is the elephant-carpaccio mindset applied to the post-PoC roadmap.
 
-### Tools comparison (informational, for the interview discussion)
+### Tools comparison (informational)
 
 - **Metabase**: easier setup, weaker custom-viz. Good for question-bank counts and percentages. Free OSS edition.
 - **Superset**: more powerful, steeper learning curve. Good for the cross-specialty heatmap.
@@ -114,11 +114,11 @@ BI tools give the curriculum team self-service *before* engineering invests in a
 
 ## 6. Why this matters for the PoC decision
 
-The single staff-level framing for the interview discussion:
+The single staff-level framing:
 
 **The PoC builds a platform that serves two distinct jobs from one data investment.** The student's `find-questions-by-clinical-intent` job (opportunity score 16) drives the visible UX; the curriculum-designer's `analyze-bloom-distribution` job (opportunity score 8) is silently unblocked by the same `bloom_level` column. If we had cut the Bloom enrichment to save 4 hours, we'd have shipped a feature instead of a platform. The decision to keep it is a staff-level multi-job architectural call, not an accidental scope item.
 
-The interview-ready one-paragraph version:
+The one-paragraph version:
 
 > "We invested in structured Bloom-level enrichment in the PoC even though only the student persona uses it in Release 1, because the same `bloom_level` column unblocks the curriculum-designer's `analyze-bloom-distribution` job in a later release. The PoC adds `prompt_version` and `medical_specialty` to the same row at zero marginal cost. That single column choice converts the system from a question-search feature into a question-bank platform; the only thing the curriculum team will need post-PoC is the API endpoints in M1, which are SQL aggregates over existing data. We're not building the future; we're refusing to break it."
 

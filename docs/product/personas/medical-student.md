@@ -71,4 +71,4 @@ End of a 1-hour session: a small list of 5-10 questions reviewed, 2-3 weak spots
 - Multi-language UI
 - Question authoring or annotation
 
-These are valid future jobs but are not part of the take-home scope.
+These are valid future jobs but are not part of the PoC scope.

@@ -75,8 +75,8 @@ Specifics:
 - **Time-to-PoC unlocked**: no event store to set up, no projection
   pipeline to build. The walking skeleton (US-01) ships in hours, not
   days. Within the 8-hour budget.
-- **Cognitive simplicity for the interview discussion**: "Postgres holds
-  the state, events tell us what happened" is a one-sentence model. ES
+- **Cognitive simplicity**: "Postgres holds the state, events tell us
+  what happened" is a one-sentence model. ES
   would require explaining stream design, snapshotting, schema versioning,
   and replay semantics — all of which are real but none of which help
   any user story.

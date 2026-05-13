@@ -3,8 +3,8 @@
 
 **Project**: Netea (Lecturio) medical-education question search
 **Feature**: `hybrid-search-medical-questions`
-**Audience**: Netea staff-engineering interview discussion (per task spec
-deliverable B "Strategic Planning")
+**Audience**: Netea staff-engineering review (per brief deliverable B
+"Strategic Planning")
 **Date**: 2026-05-13
 
 This is the operationally-honest roadmap from a working PoC to publisher
@@ -19,7 +19,7 @@ quantifies **migration cost** so the discussion is "we know the path" not
 
 | Milestone | Scope | Headline trigger to advance | Estimated effort to ship |
 |---|---|---|---|
-| **M0 — Walking-skeleton PoC** | 10 questions, sync CLI, single Postgres, single Node API, Vite SPA | First batch >100 questions OR first user-facing deploy | **8 hours** (the take-home itself) |
+| **M0 — Walking-skeleton PoC** | 10 questions, sync CLI, single Postgres, single Node API, Vite SPA | First batch >100 questions OR first user-facing deploy | **8 hours** |
 | **M1 — Reliable internal batch** | 10k–100k questions, async ingestion, OTEL, RDS Proxy, lazy re-enrichment | Student-facing deploy approval OR sustained QPS > 50 OR multi-tenant requirement | 2–3 engineer-weeks |
 | **M2 — Public student-facing** | 100k–1M questions, auth + quotas, replica read, Redis cache, CDN | Corpus > 5M OR KPI #3 retrieval-relevance < 80% at scale OR multi-region | 4–6 engineer-weeks |
 | **M3 — Scale ceiling exit** | OpenSearch substitution behind `packages/search` adapter; Postgres remains SoT + analytics | (terminal — re-evaluate per evidence) | 2–4 engineer-weeks once trigger fires |
@@ -31,7 +31,7 @@ budget-blocking event.
 
 ---
 
-## M0 — Walking-skeleton PoC (the 8-hour take-home)
+## M0 — Walking-skeleton PoC (the 8-hour build)
 
 ### What it ships
 
@@ -111,7 +111,7 @@ Any one of the following advances us to M1:
 | LLM provider 429 cascade during ingest demo | Med | Med | Exponential backoff; transport-retry budget separate from schema-retry (Expansion A §3). |
 | OpenAI silently changes `gpt-4o-mini` distribution | Med | High | `prompt_version` + `model` stamped per row; before/after telemetry by `prompt_version` (Expansion A §6). |
 | 8-hour PoC budget overrun | High | Med | Elephant-carpaccio slicing; US-07 is slip-safe; walking skeleton first means even a half-finished PoC demos. |
-| Demo OpenAI connectivity fails during interview | Med | High | Pre-record demo video; have offline backup; document key fallback. |
+| Demo OpenAI connectivity fails during the live demo | Med | High | Pre-record demo video; have offline backup; document key fallback. |
 | HNSW parameters are unbenchmarked on real corpus | Low | Low (at 10q) / Med (at 10k+) | Document Open Issue 1; benchmark at M1 ≥100 questions. |
 | Cost runaway from accidental re-run | Med | High | `INGEST_MAX_COST_USD=5.00` default cap; pipeline aborts gracefully if exceeded (Expansion E §6). |
 
@@ -329,7 +329,7 @@ each step.
 
 ## Cross-milestone bottlenecks and mitigations
 
-Per the task spec deliverable B's "Risk Assessment", these are the
+Per the brief's deliverable B "Risk Assessment", these are the
 **named bottlenecks** of the entire system across all milestones, with
 mitigation that lives in the architecture (not just in operations):
 
@@ -419,7 +419,7 @@ Tracked in `brief.md §Application Architecture 12` and surfaced in
 
 ---
 
-## One-paragraph framing for the interview
+## One-paragraph framing
 
 > The PoC is the *inner loop* of a system whose *outer loops* scale.
 > M0 hits every measurable KPI on a 10-question seed; M1 wraps the

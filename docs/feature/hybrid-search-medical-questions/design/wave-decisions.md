@@ -204,8 +204,8 @@ Inherited from DISCUSS System Constraints + DESIGN-wave decisions:
   (`INGEST_MAX_COST_USD` per Expansion E §6).
 - **No auth, no multi-tenancy, no orchestrator, no real telemetry
   vendor at M0**.
-- **PoC budget**: 8 hours total per task spec; slip-safe ordering
-  ensures even partial PoC has demo value.
+- **PoC budget**: 8 hours total; slip-safe ordering ensures even a
+  partial PoC has demo value.
 - **Single embedding model at ingest and query time** — switching
   invalidates all stored vectors.
 

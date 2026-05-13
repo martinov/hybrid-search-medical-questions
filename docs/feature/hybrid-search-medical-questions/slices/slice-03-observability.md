@@ -15,7 +15,7 @@
 
 ## Why this slice exists
 
-The Plan-of-Action in the design wave will recommend production telemetry (OTEL, Prometheus, etc.) — but for the PoC, "did the LLM call respond in 900ms and cost $0.007" is enough signal. The interview discussion can then be "in production we would emit OTEL spans here" rather than "we have no idea what this costs."
+The Plan-of-Action in the design wave will recommend production telemetry (OTEL, Prometheus, etc.) — but for the PoC, "did the LLM call respond in 900ms and cost $0.007" is enough signal. The stakeholder framing can then be "in production we would emit OTEL spans here" rather than "we have no idea what this costs."
 
 ## Out of scope
 

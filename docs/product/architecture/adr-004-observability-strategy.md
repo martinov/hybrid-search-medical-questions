@@ -17,7 +17,7 @@ Expansion A §6 names the metrics that matter for non-determinism observability
 `finish_reason` distribution, latency, cost per question) and the slicing
 dimensions (`prompt_version`, `model`, `medical_specialty`).
 
-The interview-time tension: a credible answer to "how would you monitor this
+The tension to resolve: a credible answer to "how would you monitor this
 in production?" must point to OTEL+Prom-class instrumentation, even though
 the PoC ships with neither. The honest framing is "the PoC captures the
 right *data*; the production version wraps it in OTEL."
@@ -152,8 +152,7 @@ Per US-03 AC, `logs/runs/{batch_id}.json` contains:
   cost/latency") as an anti-pattern.
 
 - **Datadog APM agent in the PoC** (rejected): vendor-specific, costs
-  money, adds a dependency on a SaaS for a take-home demo. Wrong tool for
-  M0.
+  money, adds a dependency on a SaaS for an M0 demo. Wrong tool for M0.
 
 - **Pino structured logger + ELK** (rejected for M0, viable at M1+): the
   Pino part is reasonable (it's a JSON logger); the ELK part is the same

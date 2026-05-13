@@ -56,9 +56,9 @@ provider (`MockLanguageModelV1` / `MockEmbeddingModelV1` from
 ## D-DISTILL-2 — BDD executor: **Vitest with describe/it mirroring Given-When-Then**
 
 **Decision**: `.feature` files are the canonical human-readable artifact
-(delivered for the Netea interview discussion). Each `.feature`
-scenario is mirrored in a Vitest `.test.ts` file whose `describe`/`it`
-names echo the Given-When-Then phrasing.
+(delivered for the stakeholder review). Each `.feature` scenario is
+mirrored in a Vitest `.test.ts` file whose `describe`/`it` names echo
+the Given-When-Then phrasing.
 
 **Rationale**:
 
@@ -256,7 +256,7 @@ Triggered at wave end per skill spec:
 1. `scaffold-authoring-recipes` (HOW) — most concretely useful at
    the DELIVER handoff boundary.
 2. `fixture-design-discussion` (WHY) — defends the LLM-mock
-   choices in the interview.
+   choices for stakeholders.
 
 The user can request any subset; none are auto-generated.
 

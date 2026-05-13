@@ -4,7 +4,7 @@
 **Parent**: `feature-delta.md` (US-02 LLM resilience; US-03 observability; System Constraints; KPI #7 cost-per-1k).
 **Wave**: DISCUSS Tier-2 expansion.
 **Density**: lean + ask-intelligent.
-**Purpose**: produce defensible cost numbers for the PoC and show the re-enrichment migration shape, so the "this scales" discussion in the interview has actual numbers behind it.
+**Purpose**: produce defensible cost numbers for the PoC and show the re-enrichment migration shape, so the "this scales" discussion has actual numbers behind it.
 
 This expansion does NOT add new requirements. It puts numbers on the KPIs already in `feature-delta.md` (specifically KPI #7: "Cost per 1000 enriched questions stays within budget; estimate < $10/1k for gpt-4o-mini + text-embedding-3-small") and articulates the re-enrichment policy that the `prompt_version` column (System Constraints: "Provenance is mandatory") enables.
 
@@ -110,7 +110,7 @@ Three corpus sizes, three cost views.
 ### What this number means at the staff-level discussion
 
 - **Below $10/1k threshold (KPI #7)?** Yes — $3.04 per 1k is well under the $10/1k budget guardrail. Three things would push it over: (a) much longer questions (p90 sizing pushes per-question to $0.000347, still under $10/1k at $3.47/1k); (b) sustained 30%+ retry rate from a bad prompt (would roughly double effective enrichment cost, still under); (c) model upgrade to `gpt-4o` (roughly 25× pricier per token, would push per-1k to roughly $76 — at that point the model upgrade is a business decision, not an oversight).
-- **PoC ingest cost** (10 questions, the seed batch): ~$0.003. Trivially absorbed by the take-home budget. The interview discussion isn't "can we afford the PoC?" — it's "how does this scale?"
+- **PoC ingest cost** (10 questions, the seed batch): ~$0.003. Trivially absorbed by the PoC budget. The relevant question isn't "can we afford the PoC?" — it's "how does this scale?"
 - **10k-question milestone** (a reasonable single-content-pack size at a real medical-ed publisher): ~$3. This is the cost of one prompt-version migration on a real corpus. It is **affordable enough to re-enrich aggressively** when the prompt changes, which materially shapes the policy in Section 3.
 - **1M-question milestone**: ~$300 to re-enrich the entire corpus. This is the largest single-pack cost we'd realistically see in this domain (publisher-scale). $300 is "operator approves the run, doesn't need a VP signoff". This shapes the policy too: even at the largest realistic scale, re-enrichment is not a budget-blocking event.
 
@@ -224,7 +224,7 @@ If at any stage v2 is producing measurably worse outcomes (eval set drop, rankin
 
 ### Why this playbook is staff-level
 
-It treats prompt change as a **schema migration**, not a configuration change. The interview answer to "how do you change a prompt in production?" is "the same way I'd change a database schema: shadow, coexist, sample, drain, flip, retain rollback." This is the discipline `feature-delta.md` System Constraints implies but doesn't spell out.
+It treats prompt change as a **schema migration**, not a configuration change. The answer to "how do you change a prompt in production?" is "the same way I'd change a database schema: shadow, coexist, sample, drain, flip, retain rollback." This is the discipline `feature-delta.md` System Constraints implies but doesn't spell out.
 
 ---
 
@@ -240,7 +240,7 @@ This is what justifies KPI #7 ("Cost per 1000 enriched questions stays within bu
 
 ### Daily token budget
 
-For a production deployment (out of PoC scope, but the interview will ask): a daily token cap across all runs, tracked in Postgres. Alert at 80% utilization. Hard abort at 100%. This is the protection against the runaway-script failure mode (`feature-delta.md` Risk Register: "LLM cost spikes from accidental re-runs").
+For a production deployment (out of PoC scope, but the inevitable next question): a daily token cap across all runs, tracked in Postgres. Alert at 80% utilization. Hard abort at 100%. This is the protection against the runaway-script failure mode (`feature-delta.md` Risk Register: "LLM cost spikes from accidental re-runs").
 
 ### Alert at 80%
 
@@ -254,7 +254,7 @@ Because the AC in US-03 already mentions "Total cost reported per run, computed 
 
 ## 7. Production thinking: scaling to 10M questions
 
-This section is for the inevitable "and how would you scale this?" question in the interview. The PoC does not build any of it.
+This section answers the inevitable "and how would you scale this?" question. The PoC does not build any of it.
 
 ### The shape of the change
 
@@ -287,7 +287,7 @@ The shape of the PoC is *aligned* with the production shape. We don't have to th
 
 What this expansion does NOT do:
 
-- Verify the actual OpenAI pricing as of 2026-05-13 (stated as **assumed**; the operator running the PoC should sanity-check against the OpenAI billing page before the interview demo).
+- Verify the actual OpenAI pricing as of 2026-05-13 (stated as **assumed**; the operator running the PoC should sanity-check against the OpenAI billing page before the demo).
 - Decide whether `needs_reenrichment` is a boolean or an enum (`pending`, `in_progress`, `failed`). DESIGN's call.
 - Implement the queue infrastructure for Section 7. Explicitly out of PoC scope.
 

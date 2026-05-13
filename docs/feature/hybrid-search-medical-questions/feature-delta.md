@@ -67,14 +67,14 @@ integration checkpoints, failure modes) live in [`docs/product/journeys/`](../..
 
 Run BEFORE journey investment as required by the workflow gate.
 
-**Verdict**: **Right-sized for the take-home PoC, BUT at the upper boundary.**
+**Verdict**: **Right-sized for the PoC, BUT at the upper boundary.**
 
 | Signal | Threshold | This feature | Verdict |
 |---|---|---|---|
 | Story count | > 10 → oversized | 7 user stories (US-01..07) | Right-sized |
 | Bounded contexts | > 3 → oversized | 4 contexts (ingest, enrich, search, chat) — at the line | At boundary |
 | Walking-skeleton integration points | > 5 → oversized | 6 (JSON file → LLM API → Postgres → search SQL → agent tool → chat UI) — at the line | At boundary |
-| Estimated effort | > 2 weeks → oversized | 8h PoC budget per task spec; 6 slices each 0.5-2 days | Right-sized |
+| Estimated effort | > 2 weeks → oversized | 8h PoC budget; 6 slices each 0.5-2 days | Right-sized |
 | Independent user outcomes | Multiple shippable independently → consider split | Two (student-facing search; admin-facing pipeline) — but they SHARE the enriched corpus as the unifying artifact | Right-sized as bundle |
 
 **Why we do not split despite the boundary**: the two personas share a single
@@ -127,7 +127,7 @@ Each release targets one outcome KPI (see KPI section below).
 ### Priority Rationale
 
 1. **Walking Skeleton first** — riskiest assumption: can the 4-component integration even be built? Validate before investing.
-2. **R1 (Reliable Pipeline) second** — the interview discussion will pivot on LLM non-determinism handling. This is the single highest-leverage area for "staff-level thinking."
+2. **R1 (Reliable Pipeline) second** — the stakeholder discussion will pivot on LLM non-determinism handling. This is the single highest-leverage area for "staff-level thinking."
 3. **R2 (Useful Student UX) third** — without R2 the student journey is bare-bones; with R2 the `calibrate-cognitive-difficulty` job is addressed.
 4. **R3 (Honest failure modes) last** — high value emotionally but lower urgency for the 8-hour PoC; slip-safe if budget tight.
 
@@ -144,7 +144,7 @@ not story-specific AC.
 - **Provenance is mandatory.** Every enriched row carries `prompt_version`, `model`, `embedding_model`, `enriched_at`.
 - **Quarantine is preferred over silent failure.** A record that cannot be validly enriched after the retry budget is exhausted MUST be parked in a quarantine table, not dropped, not silently corrupted, not written to the corpus.
 - **Cost is observable per batch.** Token usage is captured per call; aggregate cost is reported in the run summary; finance-defensible numbers are a deliverable.
-- **PoC budget is 8 hours total** per task spec. Slices have effort estimates summing within that envelope, with explicit slip-safe ordering (R3 is the first to cut).
+- **PoC budget is 8 hours total**. Slices have effort estimates summing within that envelope, with explicit slip-safe ordering (R3 is the first to cut).
 - **No production-grade hardening** in PoC scope: no auth, no multi-tenancy, no real telemetry backend, no orchestrator (Airflow/Temporal), no distributed retry queue.
 
 ---
@@ -823,7 +823,7 @@ In 8 hours of focused PoC effort, demonstrate a hybrid-search system over LLM-en
 
 | KPI | Data Source | Method | Frequency | Owner |
 |---|---|---|---|---|
-| Retrieval relevance (#3) | `data/seed-queries.json` + manual eval | one-shot eval at end of PoC | once | Sam (during interview demo) |
+| Retrieval relevance (#3) | `data/seed-queries.json` + manual eval | one-shot eval at end of PoC | once | Sam (during demo) |
 | Enrichment validity (#2) | SQL on enriched_questions vs quarantine | per-run | every ingest | pipeline |
 | Latency p95 (#1, #4) | Date.now() deltas captured in run record | per-run | every ingest | pipeline |
 | Cost (#4, #7) | token counts × pricing table | per-run | every ingest | pipeline |
@@ -880,7 +880,7 @@ Surfaced for DESIGN wave; not managed here.
 | Agent hallucinates result titles | Technical | High (LLM default) | Critical (trust collapse) | **Mitigation: [Slice 06 (Zero-result recovery)](./slices/slice-06-zero-result-recovery.md) is the dedicated mitigation slice** — US-07's discriminated `SearchResultSchema` (`kind: "no_match"` branch) + honest empty-result handling in agent system prompt. If Slice 06 slips (it is marked Could Have and slip-safe), the emotional-arc protection at the end-state is missing and this risk's residual likelihood reverts to High. |
 | Embedding model change invalidates corpus | Technical | Low | High | Document constraint explicitly in System Constraints; future feature to re-embed entire corpus |
 | LLM cost spikes from accidental re-runs | Project | Medium | Medium | Cost reported per run (US-03); `--dry-run` flag (future); CLI banner confirmation before destructive operations (future) |
-| Demo connectivity to OpenAI fails during interview | Project | Medium | High | Pre-record demo video or have an offline backup; document model + key fallback |
+| Demo connectivity to OpenAI fails during the live demo | Project | Medium | High | Pre-record demo video or have an offline backup; document model + key fallback |
 
 ---
 
@@ -950,10 +950,10 @@ The active density mode is `lean + ask-intelligent`. Triggers were evaluated at 
 
 Pick any subset; each adds a Tier-2 document under `docs/feature/hybrid-search-medical-questions/expansions/`:
 
-- **[A] LLM non-determinism deep dive** — extended treatment of prompt-versioning, structured-output enforcement, Zod schema design, retry-vs-quarantine policy decision matrix. Defends the staff-level discussion in the interview. Estimated 1-2 pages.
+- **[A] LLM non-determinism deep dive** — extended treatment of prompt-versioning, structured-output enforcement, Zod schema design, retry-vs-quarantine policy decision matrix. Defends the staff-level reasoning. Estimated 1-2 pages.
 - **[B] Hybrid ranking formula comparison** — side-by-side analysis of weighted-score-sum, reciprocal rank fusion, and learned-to-rank approaches. Includes a worked example on a 3-question corpus. Estimated 1 page.
 - **[C] Curriculum-designer analytics roadmap** — tertiary-persona roadmap showing how Bloom-level enrichment enables future curriculum analytics. Defends the enrichment investment beyond single-use. Estimated 1 page.
-- **[D] Emotional-arc design rationale** — explicit mapping from student's anxiety/relief curve to specific UI affordances (streaming, honest empty-result handling, multi-turn coherence). Defends the UX choices in the interview. Estimated 1 page.
+- **[D] Emotional-arc design rationale** — explicit mapping from student's anxiety/relief curve to specific UI affordances (streaming, honest empty-result handling, multi-turn coherence). Defends the UX choices. Estimated 1 page.
 - **[E] Cost model and re-enrichment policy** — extended treatment of when to re-enrich, how to budget for prompt changes, how to migrate prompt versions in production. Defends the "this scales" discussion. Estimated 1 page.
 
 **Default**: emit `DocumentationDensityEvent` records with kind `expansion-offered` for each option above; await user selection. No expansions are auto-generated.
@@ -966,10 +966,10 @@ If the user selects none, emit a single `expansion-declined` event and consider 
 
 User selected three Tier-2 expansions from the wave-end scoped menu above. Each is a standalone document under `expansions/`. The expansions defend the staff-level reasoning behind decisions already locked in this feature-delta; they do not introduce new requirements.
 
-- **[A] LLM non-determinism deep dive** → [`expansions/A-llm-non-determinism.md`](./expansions/A-llm-non-determinism.md) — failure taxonomy (F1-F7), 5-layer defense in depth, retry/quarantine/accept decision matrix, prompt-versioning as migration mechanism, Bloom enum evolution playbook, Zod sketch, interview talking points. `[WHY]`
+- **[A] LLM non-determinism deep dive** → [`expansions/A-llm-non-determinism.md`](./expansions/A-llm-non-determinism.md) — failure taxonomy (F1-F7), 5-layer defense in depth, retry/quarantine/accept decision matrix, prompt-versioning as migration mechanism, Bloom enum evolution playbook, Zod sketch, stakeholder talking points. `[WHY]`
 - **[E] Cost model and re-enrichment policy** → [`expansions/E-cost-and-reenrichment.md`](./expansions/E-cost-and-reenrichment.md) — per-question cost decomposition, totals at 10k/100k/1M corpus sizes, re-enrichment triggers and lazy-policy recommendation, 5-stage prompt migration playbook, per-run budget guardrails, production scale-up shape. `[HOW]`
 - **[C] Curriculum-designer analytics roadmap** → [`expansions/C-curriculum-analytics-roadmap.md`](./expansions/C-curriculum-analytics-roadmap.md) — tertiary-persona view roadmap, data-shape gap analysis (what PoC ships vs. what M1+ needs), M0-M3 phasing, "platform not feature" framing. `[HOW]`
-- **[F] Fixture design discussion** → [`expansions/F-fixture-design.md`](./expansions/F-fixture-design.md) — fixture taxonomy (real-adapter / fake LLM / seed-data / browser), Vitest scope choices and per-scenario mock-LLM reset rule, honest blind-spot inventory of what mocks cannot model, Mastra ↔ AI SDK bridge implementation-agnostic seam, three code sketches (docker-compose, F4 mock, deterministic embedding), interview talking points. `[WHY]`
+- **[F] Fixture design discussion** → [`expansions/F-fixture-design.md`](./expansions/F-fixture-design.md) — fixture taxonomy (real-adapter / fake LLM / seed-data / browser), Vitest scope choices and per-scenario mock-LLM reset rule, honest blind-spot inventory of what mocks cannot model, Mastra ↔ AI SDK bridge implementation-agnostic seam, three code sketches (docker-compose, F4 mock, deterministic embedding), stakeholder talking points. `[WHY]`
 
 DocumentationDensityEvent records emitted on 2026-05-13:
 
@@ -1039,7 +1039,7 @@ risk has a named mitigation and a tripwire metric.
 The `brief.md` file has placeholder sections (`## Domain Model`,
 `## Application Architecture`) awaiting append by the DDD architect and
 solution architect respectively. The system-architect section is closed.
-Five open issues are flagged in `brief.md` §8 for interview-time discussion;
+Five open issues are flagged in `brief.md` §8 for stakeholder discussion;
 none reopen locked decisions.
 
 ---
@@ -1576,7 +1576,7 @@ tests/
 
 Conventions:
 
-- `.feature` files are the **interview discussion artifact**. They read
+- `.feature` files are the **stakeholder-facing artifact**. They read
   as clean English Gherkin and contain zero TypeScript / HTTP / SQL
   vocabulary.
 - `.test.ts` mirrors are the **executable artifact**. Vitest's
@@ -1708,7 +1708,7 @@ All 6 slices shipped end-to-end via Outside-In TDD over 6 atomic commits (`f33c9
 - ✅ `pnpm -r typecheck` → 8/8 workspaces clean
 - ✅ `pnpm test:acceptance -- --no-file-parallelism` → 40/40 green
 - ✅ Stack pinned to verified-current versions: Node 24, TS 6.0.3, `ai@6.0.180`, `@ai-sdk/openai@^3`, `zod@4.4.3`, `drizzle-orm@0.45.2`, `@mastra/core@^1.33` (installed, runtime-bypassed)
-- ⊘ L1-L6 refactoring pass — skipped for take-home scope; code is clean enough for interview review
+- ⊘ L1-L6 refactoring pass — skipped for PoC scope; code is clean enough for stakeholder review
 - ⊘ Adversarial review (`/nw-review @nw-software-crafter-reviewer`) — skipped; the Sentinel review at end of DISTILL covered the contracts
 - ⊘ Mutation testing — skipped; mutation suite would burn time disproportionate to PoC value
 - ⊘ DES integrity verification — skipped (DES is Python-centric instrumentation; the 6 atomic commits + green acceptance suite serve as the audit trail)
@@ -1758,4 +1758,4 @@ These are post-PoC items, surfaced honestly:
 | 2026-05-13 | DESIGN wave solution-architect (Application Architecture) sub-wave complete. `brief.md` extended with `## Application Architecture` section (§1.1–§1.15): component decomposition (3 apps + 6 packages), hexagonal port/adapter map, C4 Component diagrams for Enrichment + Search, canonical Zod schemas, DB schema sketch, RRF sketch, Mastra agent design, layered convention, Domain Model 6 open issues all closed, 6 new application-level risks (R-13–R-18), 8 DELIVER open issues, contract-test annotation for platform-architect. Five new ADRs (adr-007 through adr-011). Summary section + Component Decomposition + Reuse Analysis + Technology Choices + Decisions table + Driving/Driven Ports + Open Questions sections appended above. Wave-decisions.md and roadmap.md emitted under `design/`. |
 | 2026-05-13 | DISTILL wave complete (acceptance-designer). 6 `.feature` files + 6 Vitest mirror `.test.ts` files under `tests/acceptance/`, one Playwright E2E spec under `tests/e2e/`, one manual KPI doc under `tests/manual/`. 38 scenarios total (55% error/edge ratio; 15 `@kpi`-tagged; 3 `@property`-tagged; 3 `@walking_skeleton @driving_port @real-io`). WS Strategy B locked (real local + fake costly). Vitest + describe/it mirror locked as BDD executor. Seven `[REF]` sections appended above (Scenario list / WS strategy / Adapter coverage / Scaffolds / Test placement / Driving Adapter coverage / Pre-requisites). `distill/wave-decisions.md` + `distill/upstream-issues.md` emitted. Reconciliation: 4 LOW-severity findings logged, no blockers. |
 | 2026-05-13 | Stack-pin corrections: user-pinned Node 24 LTS, TS 6+, Mastra `@mastra/core@1.32.0`, Vercel AI SDK latest stable, Drizzle 0.45.2, Zod 4. Context7 + npm-view-verified at install: actual installed versions are AI SDK 6.0.180, Mastra 1.33.0, Zod 4.4.3, TS 6.0.3 (current at install). Brief.md tech-stack table, 5 ADRs, feature-delta tech-choices table, and wave-decisions.md updated. Direct `openai` Node SDK dropped — all LLM calls go through `ai` (`generateObject`, `embed`, `embedMany`, `streamText`) with `@ai-sdk/openai` as provider. `useChat` source clarified as `@ai-sdk/react` (UI hooks split out of base `ai` package). |
-| 2026-05-13 | DELIVER wave complete. 6 atomic commits (`f33c9a6` walking skeleton → `9ebda7a` zero-result recovery) on `main`. 40/40 acceptance tests green sequentially. 8/8 workspaces typecheck. `## Wave: DELIVER / [REF]` summary sections appended above. README rewritten to reflect shipped state. Open items (parallel-test race, Mastra-Zod-4 peer warning, real-OpenAI smoke test, CI pipeline) surfaced honestly for interview discussion. |
+| 2026-05-13 | DELIVER wave complete. 6 atomic commits (`f33c9a6` walking skeleton → `9ebda7a` zero-result recovery) on `main`. 40/40 acceptance tests green sequentially. 8/8 workspaces typecheck. `## Wave: DELIVER / [REF]` summary sections appended above. README rewritten to reflect shipped state. Open items (parallel-test race, Mastra-Zod-4 peer warning, real-OpenAI smoke test, CI pipeline) surfaced honestly for stakeholder review. |

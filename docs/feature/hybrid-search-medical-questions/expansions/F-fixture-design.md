@@ -4,7 +4,7 @@
 **Parent**: `feature-delta.md` (D-DISTILL-1 Strategy B; all 6 slice features).
 **Wave**: DISTILL Tier-2 expansion.
 **Density**: lean + ask-intelligent.
-**Purpose**: defend, at staff level, *why* the LLM-mock fixtures are shaped the way they are, *what scope* each fixture holds, and *what they cannot model*. The interview discussion of the acceptance suite hinges on this — a reviewer who finds the fixtures load-bearing for the test outcomes will (correctly) reject the entire suite as Fixture Theater.
+**Purpose**: defend, at staff level, *why* the LLM-mock fixtures are shaped the way they are, *what scope* each fixture holds, and *what they cannot model*. The defense of the acceptance suite hinges on this — anyone who finds the fixtures load-bearing for the test outcomes will (correctly) reject the entire suite as Fixture Theater.
 
 This expansion does NOT introduce new fixtures. It articulates the reasoning behind the choices already encoded in `tests/acceptance/*/scenarios.test.ts` and locked by `D-DISTILL-1` (Strategy B: real local + fake costly).
 
@@ -32,7 +32,7 @@ Fixtures in this suite fall into four categories. Each category exists at a diff
 ### 1c. Seed-data fixtures
 
 - **Sample medical-question JSON** — one canonical cardiology question for Slice 01 (defined inline as `SEED_QUESTION`); six diverse-specialty questions for Slice 02; specialty-balanced sets for Slices 04-06. Each is written to a tmp file in `beforeAll`. The data shape is the production input shape (title + content + answers[] + explanation per `brief.md §Domain Model 2`).
-- **Canonical enrichment payloads** (`VALID_ENRICHMENT` constants) — pre-shaped Zod-compliant enrichment outputs paired with each seed question. These are what the mock LLM returns for the happy path. Co-locating the seed input and the expected enrichment in the test file is intentional: it lets the reviewer audit, at a glance, *which* mock response the production code received.
+- **Canonical enrichment payloads** (`VALID_ENRICHMENT` constants) — pre-shaped Zod-compliant enrichment outputs paired with each seed question. These are what the mock LLM returns for the happy path. Co-locating the seed input and the expected enrichment in the test file is intentional: it lets a reader audit, at a glance, *which* mock response the production code received.
 - **No cached real OpenAI embeddings.** We deliberately do *not* embed seed text via real OpenAI and snapshot the vectors. The mock embedding is `[0.001, 0.001, …]` — useless for measuring semantic quality but perfectly sufficient for proving RRF wires up (the lexical leg does the actual differentiating work in tests). See §3 for what this *cannot* model.
 
 ### 1d. Browser fixtures (Playwright)
@@ -64,7 +64,7 @@ The per-scenario mock-LLM reset is the single most important rule in this list. 
 
 ## 3. What the fakes CANNOT model
 
-Honest accounting. A staff-level reviewer will ask this; the answer must be specific, not hand-waved.
+Honest accounting. A staff-level reader will ask this; the answer must be specific, not hand-waved.
 
 ### 3a. `MockLanguageModelV1` cannot reproduce
 
@@ -104,7 +104,7 @@ app = createApp({
 
 If DELIVER ships Mastra: the agent receives `chatModel` and routes its `generate` / `stream` calls through it. If DELIVER ships AI SDK direct: `streamText({ model: chatModel, … })` receives it. The test cares about neither path — only that the chat reply streams and references the ingested question by title.
 
-This is the single most important property of the fixture design for the interview discussion: **the acceptance suite does not depend on which side of the ENRICH-DELIVER-01 fork DELIVER takes.** If Mastra integration turns out to be blocked (the documented risk), DELIVER can ship the AI SDK fallback and the acceptance suite goes GREEN without modification.
+This is the single most important property of the fixture design: **the acceptance suite does not depend on which side of the ENRICH-DELIVER-01 fork DELIVER takes.** If Mastra integration turns out to be blocked (the documented risk), DELIVER can ship the AI SDK fallback and the acceptance suite goes GREEN without modification.
 
 ---
 
@@ -174,9 +174,9 @@ Used in Slice 04 and Slice 06 where the *semantic ranking* matters (not just the
 
 ---
 
-## 6. Interview talking points
+## 6. Stakeholder talking points
 
-Three questions the Netea reviewer is most likely to surface during the artifact discussion. Each gets a one-paragraph answer grounded in the artifacts above.
+Three questions a stakeholder is most likely to surface during the artifact discussion. Each gets a one-paragraph answer grounded in the artifacts above.
 
 ### Q1: "How do you test that the LLM retry actually works without burning OpenAI dollars?"
 
@@ -212,4 +212,4 @@ What this expansion does NOT do (still belongs to DELIVER):
 
 | Date | Change |
 |---|---|
-| 2026-05-13 | Initial Tier-2 expansion. Fixture taxonomy (real-adapter / fake LLM / seed-data / browser), Vitest scope decisions, blind-spot inventory, Mastra ↔ AI SDK bridge handling, three code sketches, interview talking points. |
+| 2026-05-13 | Initial Tier-2 expansion. Fixture taxonomy (real-adapter / fake LLM / seed-data / browser), Vitest scope decisions, blind-spot inventory, Mastra ↔ AI SDK bridge handling, three code sketches, stakeholder talking points. |

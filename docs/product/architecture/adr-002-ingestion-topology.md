@@ -8,7 +8,7 @@
 
 ## Context
 
-The task spec explicitly calls out "the asynchronous nature of the AI
+The brief explicitly calls out "the asynchronous nature of the AI
 enrichment" as a deliverable in the data-flow diagram. The DISCUSS wave
 constrained: no orchestrator (Airflow / Temporal) in PoC scope. The
 DIVERGE wave scored four ingestion topologies (`diverge/options-matrix.md`
@@ -67,7 +67,7 @@ Specifics:
   the same code runs against a managed Postgres at deploy time.
 - **Failure-model clarity**: the Expansion A §3 decision matrix
   (schema-retry, transport-retry, quarantine) maps directly to one
-  function's try/catch. The interview answer to "how do you handle LLM
+  function's try/catch. The answer to "how do you handle LLM
   non-determinism" is a single code path, not a distributed-systems story.
 - **Re-usable inner function**: M1's SQS+Lambda wrap reuses the same
   `enrich(question)` function. No rewrite; only the loop around it changes.
@@ -112,7 +112,7 @@ Specifics:
   failure-model story.
 
 - **T4 — Real queue (SQS / Redis Streams)** (cut for PoC, adopted for M1):
-  AWS dependency for an 8-hour take-home is wrong shape. Adds infra setup
+  AWS dependency for an 8-hour PoC is wrong shape. Adds infra setup
   with zero PoC-scope benefit. *However*, this is the correct M1 choice
   (ADR-003) — we just don't build it in M0.
 

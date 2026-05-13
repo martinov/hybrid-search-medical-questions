@@ -8,8 +8,8 @@
 **Owner**: system-architect (this section); ddd-architect and solution-architect append below.
 
 This file is the single SSOT for the feature's architecture. It compresses the
-DIVERGE recommendation, expansion analyses, and journey artifacts into a single
-buy-able artifact for the interview discussion. Diagrams are Mermaid (rendered
+DIVERGE recommendation, expansion analyses, and journey artifacts into one
+buy-able artifact for the stakeholder review. Diagrams are Mermaid (rendered
 in any modern viewer). ADRs live next to this file under the same directory.
 
 ---
@@ -109,7 +109,7 @@ flowchart LR
 
 ### 3. Data flow diagram — one question, Raw → Indexed
 
-The take-home explicitly asks for "data flow showing async nature of AI
+The brief calls for "data flow showing async nature of AI
 enrichment". At PoC, this flow is **synchronous inline** (T1 in
 `diverge/options-matrix.md`); at M1, the same per-question function is
 wrapped by SQS+Lambda. The diagram shows both the synchronous path (solid)
@@ -167,7 +167,7 @@ Constraints):
 - `enriched_at` (timestamptz)
 - `retry_count` (int, 0/1/2)
 
-**Asynchrony framing for the interview**:
+**Asynchrony framing**:
 
 The PoC diagram is synchronous inline. *The async story is not absent — it is
 deferred by design.* The inner per-question function (the boxed flow) is the
@@ -325,7 +325,7 @@ Four milestones. Each names what's in scope, the trigger to move to the next,
 and the migration path. No milestone forces a rewrite — every transition is
 additive or substitutive at a single boundary.
 
-#### M0 — PoC (current, this take-home)
+#### M0 — PoC (current)
 
 **Scope**:
 
@@ -544,10 +544,10 @@ may surface additional risks in their respective sections.
 
 ---
 
-### 8. Open issues for the candidate
+### 8. Open issues
 
 These are flaws or tensions surfaced during the system-architecture pass that
-deserve interview-time clarification. None justify reopening a locked
+deserve stakeholder clarification. None justify reopening a locked
 decision; all are worth a defensible position.
 
 1. **HNSW index parameters are stated but not benchmarked**. We commit to
@@ -557,18 +557,17 @@ decision; all are worth a defensible position.
    against KPI #3 (retrieval relevance ≥ 80%).
 
 2. **The PoC's "no auth" stance leaks into the API contract**. If we ship M0
-   to a publicly reachable URL for the interview demo, *anyone* can hit
-   `/api/chat` and burn through the OpenAI key. The PoC scope explicitly
-   excludes auth, but the demo-time mitigation (set `OPENAI_API_KEY` to a
-   low-rate-limit dev key; only run during the interview window) should be
-   stated explicitly.
+   to a publicly reachable URL for the demo, *anyone* can hit `/api/chat`
+   and burn through the OpenAI key. The PoC scope explicitly excludes auth,
+   but the demo-time mitigation (set `OPENAI_API_KEY` to a low-rate-limit
+   dev key; only run during the demo window) should be stated explicitly.
 
 3. **RRF k=60 is a universal default, not a tuned parameter**. We commit to
    k=60 (the value Elasticsearch, OpenSearch, and Qdrant all settled on per
    `options-matrix.md` sources). On the 10-question PoC corpus this cannot
    be tuned. The honest framing: "k=60 is a defensible default; tuning is a
    post-launch experimentation activity gated on having a labeled retrieval
-   eval set". This is named here for the interview.
+   eval set". Named here so the assumption is explicit.
 
 4. **Synchronous chat agent path is a soft SPOF**. The single Node process
    running Mastra + Hono is a SPOF for `/api/chat`. At PoC scale this is
@@ -1222,7 +1221,7 @@ relevant event** (`prompt_version`, `model`, `model_temperature`,
 an enriched record carries its provenance. There is no scenario where an
 event observer can't tell which prompt version produced the fact.
 
-**Why no `PromptVersionStamped` event**: the take-home brief asked us to
+**Why no `PromptVersionStamped` event**: the brief calls for
 "model events for ... prompt version stamped". On reflection, this is not
 a domain event — it's metadata on every enrichment event. Emitting a
 separate `PromptVersionStamped` event would be ceremony without information
@@ -1322,7 +1321,7 @@ and dual-write tax is real.
 **The honest framing**: the shared DB at PoC is a deliberate simplification
 with an explicit migration path (M3 → OpenSearch). It is not "we got lazy";
 it is "we matched the architecture to the corpus scale and the 8-hour
-budget." This is the staff-level position for the interview.
+budget." This is the staff-level position.
 
 #### 5.3 — Search → Postgres (read side)
 
@@ -1516,8 +1515,7 @@ should ratify this is a "Postgres for everything" decision through M2.
 ### Domain Model 7 — ES/CQRS evaluation (mandatory defense of "no ES")
 
 The user pre-chose **no event sourcing**. This section defends that
-choice on named criteria, so the interview answer to "why not ES?" is
-substantive.
+choice on named criteria, so the answer to "why not ES?" is substantive.
 
 **Criterion 1 — Audit requirement (US-03)**.
 US-03 wants **observability** ("Sam can defend the pipeline to Finance
@@ -1570,7 +1568,7 @@ machines; it earns its keep on long-running workflows that span days
 and many actors. Ours doesn't.
 **Verdict**: not warranted.
 
-**Conclusion — the one-paragraph interview-ready defense**:
+**Conclusion — one-paragraph defense**:
 
 > We use **state-based aggregates with emitted-but-not-sourced domain
 > events**. Postgres rows are source-of-truth; events are facts that
@@ -1587,7 +1585,7 @@ and many actors. Ours doesn't.
 > not the system of record. That's a deliberate scope-fit decision, not a
 > default.
 
-This is the interview ammunition for "why not ES?".
+This is the defense for "why not ES?".
 
 ---
 
@@ -1687,7 +1685,7 @@ code) per the Reuse Analysis table in §1.3.
    Search bounded context and because `apps/api` is the consumer; at
    M3 (ADR-001 named exit), the OpenSearch adapter slots in behind the
    same `hybridSearch()` function signature.
-5. **Conway's Law check**: a one-person take-home; team boundaries
+5. **Conway's Law check**: a one-person PoC; team boundaries
    are not a constraint at PoC scope. The package boundaries above
    are designed to survive a 3-5 person team at M1 with clear
    ownership: `apps/web` (frontend), `apps/api` + `packages/search` +

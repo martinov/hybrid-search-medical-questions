@@ -4,9 +4,9 @@
 **Feature**: `hybrid-search-medical-questions`
 **Wave**: DIVERGE
 **Date**: 2026-05-13
-**Inputs**: `feature-delta.md`, expansions A/E/C, `Test Task - BE Staff Engineer.md`, `options-matrix.md`, `taste-filter.md`
+**Inputs**: `feature-delta.md`, expansions A/E/C, project brief, `options-matrix.md`, `taste-filter.md`
 
-This is the DIVERGE deliverable the DESIGN wave (search-backend ADR) will distill. It picks one option per axis, names the runner-up, and names the option we killed. It is willing to disagree with the candidate's locked choice (`pgvector`) where the analysis warrants — and after running the analysis, it does *not* warrant disagreement, but the dissent path is documented honestly in Section 4 so the interview can answer the question without flinching.
+This is the DIVERGE deliverable the DESIGN wave (search-backend ADR) will distill. It picks one option per axis, names the runner-up, and names the option we killed. It is willing to disagree with the locked choice (`pgvector`) where the analysis warrants — and after running the analysis, it does *not* warrant disagreement, but the dissent path is documented honestly in Section 4.
 
 ---
 
@@ -87,7 +87,7 @@ Three systems on the critical path, dual-write at ingest and at every re-enrichm
 
 **One-paragraph rationale**
 
-The journey artifact `admin-ingests-batch.yaml` Step 1 already shows the target UX: a single CLI streaming per-question log lines, a summary at the end. T1 matches it exactly. The Expansion A Section 3 decision matrix — schema-retry budget separate from transport-retry budget, quarantine after exhaustion — maps cleanly into a single function with try/catch. Failure modes are immediately legible in the interview demo because the failure stack trace is the program stack trace, not a queue handoff. Production scale-up (Expansion E Section 7) wraps T1's inner function in a queue producer without redesigning the retry/quarantine semantics — the inner loop is the unit of reuse. This is the most honest "PoC is the inner loop, production wraps an outer loop around it" framing.
+The journey artifact `admin-ingests-batch.yaml` Step 1 already shows the target UX: a single CLI streaming per-question log lines, a summary at the end. T1 matches it exactly. The Expansion A Section 3 decision matrix — schema-retry budget separate from transport-retry budget, quarantine after exhaustion — maps cleanly into a single function with try/catch. Failure modes are immediately legible in the demo because the failure stack trace is the program stack trace, not a queue handoff. Production scale-up (Expansion E Section 7) wraps T1's inner function in a queue producer without redesigning the retry/quarantine semantics — the inner loop is the unit of reuse. This is the most honest "PoC is the inner loop, production wraps an outer loop around it" framing.
 
 **Runner-up: T2 — Async in-process concurrency pool (`p-limit(3)`)**
 
@@ -95,7 +95,7 @@ Becomes the right choice if the seed batch grows beyond ~100 questions and seria
 
 **Killed: T3 — Separate worker process + Postgres-backed queue, and T4 — Real queue (SQS / Redis Streams)**
 
-Premature production. T3 splits the failure model across two processes (retry-at-the-queue vs retry-at-the-LLM) and adds ~3 hours of queue/worker infrastructure that does not advance any user story. T4 adds an AWS dependency to a take-home demo. Both are correct at production scale (Expansion E Section 7) and wrong at PoC scale. Full reasoning in `taste-filter.md`.
+Premature production. T3 splits the failure model across two processes (retry-at-the-queue vs retry-at-the-LLM) and adds ~3 hours of queue/worker infrastructure that does not advance any user story. T4 adds an AWS dependency to an 8-hour PoC demo. Both are correct at production scale (Expansion E Section 7) and wrong at PoC scale. Full reasoning in `taste-filter.md`.
 
 ---
 
@@ -119,7 +119,7 @@ This section makes the recommendation traceable.
 
 ## 4. Dissenting case — "what if pgvector is wrong?"
 
-The candidate has pre-decided pgvector. This section is the honest answer to "but what if you're rationalizing?". Two scenarios where the recommendation flips, and one where the recommendation is held but the *framing* changes.
+The locked stack pre-decided pgvector. This section is the honest answer to "but what if you're rationalizing?". Two scenarios where the recommendation flips, and one where the recommendation is held but the *framing* changes.
 
 ### 4a. If the corpus is already 100k+ at PoC time → Option B wins
 
@@ -133,9 +133,9 @@ If at 1M+ corpus, the analysis shows lexical retrieval contributes <20% to top-3
 
 This is the most likely real outcome: pgvector is correct for the PoC AND correct up to ~5M rows AND becomes a tuning problem above that. The dissent here isn't "switch to OpenSearch"; it's "be explicit that pgvector is the PoC + Release 1-3 choice and that the migration path to OpenSearch is on the roadmap." The migration is well-understood: dump `enriched_questions`, transform to OpenSearch document shape, bulk-index, swap the search adapter behind the existing `POST /api/search` endpoint. The work is real but the path is unambiguous. **This is the framing we recommend even when the recommendation is held**: pgvector for now, OpenSearch is the named exit.
 
-### Has the candidate's locked choice been validated by this analysis?
+### Has the locked choice been validated by this analysis?
 
-**Yes, for the PoC.** With one caveat the candidate should internalize: the recommendation is *pgvector for PoC + Release 1-3*, not *pgvector forever*. The interview discussion is strongest when this honesty is foregrounded.
+**Yes, for the PoC.** With one caveat to internalize: the recommendation is *pgvector for PoC + Release 1-3*, not *pgvector forever*. The framing is strongest when this honesty is foregrounded.
 
 ---
 
@@ -153,7 +153,7 @@ The DISCUSS wave locked Mastra as the agent framework. While scoring, we noted t
 
 ### 5c. (Non-concern) Embedding model immutability
 
-The DISCUSS wave already documents: changing the embedding model invalidates all stored vectors. This is correct and not a defect of pgvector — it's a property of vector search in general. Just naming it so the interview doesn't confuse the question.
+The DISCUSS wave already documents: changing the embedding model invalidates all stored vectors. This is correct and not a defect of pgvector — it's a property of vector search in general. Just naming it so the question isn't confused with a backend defect.
 
 ---
 

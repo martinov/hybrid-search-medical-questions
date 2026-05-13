@@ -10,7 +10,7 @@ application layer, and exposes the corpus through:
 - a `POST /api/chat` agent endpoint (AI SDK 6 streaming) with a `searchQuestions` tool
 - a Vite + React 19 chat UI using `@ai-sdk/react` `useChat`
 
-## What's in this submission
+## What's in this repo
 
 - **Architecture & Design docs** — `docs/product/architecture/brief.md` (C4 Context / Container / Component diagrams in Mermaid; data flow diagram; back-of-envelope) plus **11 ADRs** in the same directory.
 - **Strategic Planning** — `docs/feature/hybrid-search-medical-questions/design/roadmap.md` (M0 → M3 milestones with named triggers and migration costs) and risk register in the feature-delta.
@@ -109,7 +109,7 @@ data/
 docker/
   postgres-init.sql           pgvector + pg_trgm + uuid-ossp extensions on first boot
 docs/
-  Test Task - BE Staff Engineer.{md,pdf}    the original task spec
+  Test Task - BE Staff Engineer.{md,pdf}    the original brief
   product/
     architecture/             brief.md + ADR-001 … ADR-011
     journeys/                 student-finds-question.yaml, admin-ingests-batch.yaml
@@ -166,7 +166,7 @@ Verified against the npm registry at submission time (2026-05-13):
 | `pnpm ingest:one` | Ingest one question (alias for `--limit 1`) |
 | `pnpm dev` | Run API + web in parallel |
 
-## Decision highlights — defensible in the discussion round
+## Decision highlights — defensible in the stakeholder review
 
 - **pgvector over OpenSearch for the PoC** (ADR-001 + DIVERGE matrix) — time-to-PoC, transactional integrity, scale headroom (~5M-row ceiling). OpenSearch is the named M3 exit when corpus > 5M OR retrieval-relevance KPI #3 < 80% at scale.
 - **F1–F7 failure taxonomy with separate retry budgets** (Expansion A + Slice 02) — the schema-retry budget is NOT consumed by transport-level 429/5xx errors; F4 (off-by-one Bloom) is explicitly non-retryable and surfaces in out-of-band eval, not at the schema layer; F7 (content-filter refusal) is immediate quarantine with zero retries.
@@ -176,10 +176,10 @@ Verified against the npm registry at submission time (2026-05-13):
 
 ## Known limitations + what would come next
 
-These are interview-mentionable, not bugs:
+These are worth raising in review, not bugs:
 
 - **Test parallelism**: `pnpm test:acceptance` requires `--no-file-parallelism` because `migrate()` races on schema creation when multiple files boot concurrently. Fix would be a per-DB advisory-lock mutex in `ensureMigrated`.
-- **Real-cost smoke test pending**: the per-question cost numbers in run summaries are calculated from real `usage.inputTokens.total` / `usage.outputTokens.total` totals, but the figures haven't been validated against an actual paid OpenAI run on the candidate's machine. The pricing constants are explicitly marked "assumed, verify before production" in `packages/observability/src/pricing.ts`.
+- **Real-cost smoke test pending**: the per-question cost numbers in run summaries are calculated from real `usage.inputTokens.total` / `usage.outputTokens.total` totals, but the figures haven't been validated against an actual paid OpenAI run on the operator's machine. The pricing constants are explicitly marked "assumed, verify before production" in `packages/observability/src/pricing.ts`.
 - **`SEARCH_MIN_RRF_SCORE` threshold not implemented** — discriminator union only has `no_match` and `no_match_with_filter`, no `below_threshold`. Simple add when needed.
 - **`tests/_helpers/chat-mocks.ts`** is still RED-scaffold; each slice inlined its own mock builders. Cleanup: hoist the shared `v3UsageFromTokens` / `STOP` / `textStreamChunks` / `toReadable` helpers into a `tests/_helpers/v3-stream.ts` module.
 - **Mastra runtime adoption** deferred until Mastra publishes a Zod-4-compatible release (or until ENRICH-DELIVER-01 is resolved by Mastra upstream). The architecture supports flipping back to Mastra Agent without disturbing the test boundary — `apps/api/src/app.ts` is the only file that would change.
@@ -187,4 +187,4 @@ These are interview-mentionable, not bugs:
 
 ## License
 
-Internal take-home submission.
+All rights reserved.

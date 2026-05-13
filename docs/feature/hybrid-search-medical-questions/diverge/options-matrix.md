@@ -4,11 +4,11 @@
 **Feature**: `hybrid-search-medical-questions`
 **Wave**: DIVERGE
 **Date**: 2026-05-13
-**Source inputs**: `docs/Test Task - BE Staff Engineer.md`, `feature-delta.md`, expansions A/E/C.
+**Source inputs**: project brief, `feature-delta.md`, expansions A/E/C.
 
 This document is the full scoring table for both axes. `recommendation.md` distills it; `taste-filter.md` explains which options were cut and why. Scores use a 1-5 scale (1 = poor / 5 = excellent for the dimension). Where a dimension is genuinely a trade-off rather than a "more is better" axis, the cell carries a directional note.
 
-A reminder on framing: the task asks for **2-3** options. We surface 5 candidates so the decision is *informed*, but the final recommendation will defend a short-list of 3 (the rest exist on this matrix to explain why they were not the short-list).
+A reminder on framing: the brief calls for **2-3** options. We surface 5 candidates so the decision is *informed*, but the final recommendation will defend a short-list of 3 (the rest exist on this matrix to explain why they were not the short-list).
 
 ---
 
@@ -18,12 +18,12 @@ A reminder on framing: the task asks for **2-3** options. We surface 5 candidate
 
 | Dim | What it measures | Why it matters here |
 |---|---|---|
-| **Scalability** | Headroom from 10 q → 1M q; failure mode when exceeded; migration cost | Task spec explicit; Expansion E sizes 10k / 100k / 1M corpora |
-| **Maintenance** | Ops burden, schema evolution, version upgrades, monitoring, team learning curve | Task spec explicit; PoC is solo-engineer but interview discussion is staff-level |
+| **Scalability** | Headroom from 10 q → 1M q; failure mode when exceeded; migration cost | Brief explicit; Expansion E sizes 10k / 100k / 1M corpora |
+| **Maintenance** | Ops burden, schema evolution, version upgrades, monitoring, team learning curve | Brief explicit; PoC is solo-engineer but the framing is staff-level |
 | **Cost (PoC)** | Infra + license for the 8-hour PoC + 10-question seed | Bounds the "can you actually ship this in 8h?" question |
 | **Cost (10k)** | Infra + license at 10k-question scale (one realistic content pack) | Expansion E's per-question cost is OpenAI-only; this dimension is the *infra* tail |
 | **Cost (1M)** | Infra + license at 1M-question scale (publisher-scale) | The staff-level "how does it scale?" framing |
-| **Time-to-PoC** | Hours of effort within the 8-hour budget to reach US-01 walking skeleton | Hard constraint per task spec |
+| **Time-to-PoC** | Hours of effort within the 8-hour budget to reach US-01 walking skeleton | Hard constraint |
 | **Hybrid quality** | Native RRF / score normalization / per-field weighting support | KPI #3 is retrieval relevance; bad hybrid = the PoC's headline metric fails |
 | **Stack fit** | Conformance with Netea's stated stack (AWS, OpenSearch, Pinecone) | "Free to choose" but conformance has signal value |
 | **Schema evo** | Cost of adding fields (`medical_specialty`, `needs_reenrichment`) | Expansion C requires `medical_specialty`; Expansion E requires `needs_reenrichment` |
@@ -63,7 +63,7 @@ A reminder on framing: the task asks for **2-3** options. We surface 5 candidate
 - **Cost-1M 4** — Genuinely good here. Sharded cluster of ~3 nodes at $100-200/mo handles 1M with headroom. Beats pgvector at this scale on cost-per-query, especially with high QPS.
 - **TTPoC 2** — Local Docker setup + index template + ingest pipeline + kNN plugin config + hybrid search pipeline (score-ranker-processor introduced in OpenSearch 2.19) + AWS SDK plumbing. The 8-hour budget is tight. Realistic: 4-5 hours to walking skeleton, leaves 3-4 hours for everything else (resilience, observability, UI). Risk: a single OpenSearch yak-shave eats the budget.
 - **Hybrid 5** — Native. OpenSearch 2.19+ ships a `score-ranker-processor` with RRF technique (default `rank_constant: 60`), configurable per-subquery weights, no application-side fusion needed. This is the strongest argument for OpenSearch on this dimension. Per-field boosting on the BM25 side is also native and mature.
-- **Stack fit 5** — Their stated stack. The interview discussion has signal value here ("you chose what we already run").
+- **Stack fit 5** — Their stated stack. Signal value here ("you chose what we already run").
 - **Schema evo 4** — Adding a field is an index template update + reindex (or dynamic mapping if we're loose). Reindex on a 1M-doc index is a real operation but well-tooled. Not as cheap as `ALTER TABLE` but not painful either.
 - **Migration off 3** — Hard to leave because the data is in OpenSearch's specific document shape; you'd export, transform, reimport into the new store. Search formulas in OpenSearch DSL don't port to other backends directly. Lock-in is real.
 
@@ -89,7 +89,7 @@ A reminder on framing: the task asks for **2-3** options. We surface 5 candidate
 - **Cost-1M 4** — Dedicated vector store performs well here; possibly faster QPS than pgvector. Infra cost ~$50-100/mo.
 - **TTPoC 3** — One extra Docker service, one extra SDK. Roughly +1 hour over the pgvector option. Doable in budget but tighter.
 - **Hybrid 4** — Qdrant 1.x has native hybrid with `prefetch` + fusion. Weaviate has hybrid search with alpha-weighting. Both have decent native support, slightly less mature than OpenSearch's RRF.
-- **Stack fit 2** — Not in Netea's stack. Picking this requires an "outside the menu" defense in the interview.
+- **Stack fit 2** — Not in Netea's stack. Picking this requires an "outside the menu" defense.
 - **Schema evo 3** — Adding a field requires Qdrant payload update + Postgres ALTER. Two systems, but Qdrant payloads are schemaless so it's not painful.
 - **Migration off 3** — Better than Pinecone (open-source, exportable) but still a re-architecture if you leave.
 
@@ -110,7 +110,7 @@ A reminder on framing: the task asks for **2-3** options. We surface 5 candidate
 
 ## Secondary axis — ingestion topology
 
-The journey artifact (`admin-ingests-batch.yaml`) explicitly calls out "the asynchronous nature of the AI enrichment" via the task spec. The DISCUSS wave already constrained: no orchestrator (Airflow/Temporal) in PoC scope. So this axis is shorter than the search backend.
+The journey artifact (`admin-ingests-batch.yaml`) explicitly calls out "the asynchronous nature of the AI enrichment" via the brief. The DISCUSS wave already constrained: no orchestrator (Airflow/Temporal) in PoC scope. So this axis is shorter than the search backend.
 
 ### Dimensions
 
@@ -119,7 +119,7 @@ The journey artifact (`admin-ingests-batch.yaml`) explicitly calls out "the asyn
 | **Determinism for PoC demo** | Can Sam run `pnpm run ingest` and see deterministic output in <30s for 10 questions? |
 | **Production scale-up** | Does the PoC topology survive being wrapped for production (10M-question Expansion E Section 7)? |
 | **PoC complexity** | Lines of glue code; infra components added |
-| **Failure model clarity** | Can we explain retry/quarantine semantics simply at the interview? |
+| **Failure model clarity** | Can we explain retry/quarantine semantics simply? |
 | **Resumability** | Can a half-finished run be resumed? |
 
 ### Score table
@@ -159,7 +159,7 @@ The journey artifact (`admin-ingests-batch.yaml`) explicitly calls out "the asyn
 
 #### T4. Real queue (SQS / Redis Streams)
 
-- **PoC determinism 2** — External managed service in the demo path. AWS dependency for a take-home is wrong shape.
+- **PoC determinism 2** — External managed service in the demo path. AWS dependency for an 8-hour PoC is wrong shape.
 - **Prod scale-up 5** — Production-ready out of the gate.
 - **PoC complexity 1** — Requires AWS/Redis infra, IAM, credentials in the demo, two-process orchestration. Wrong tool for 10 questions.
 - **Failure model 3** — Same as T3 plus the at-least-once-delivery semantics that queues bring.
