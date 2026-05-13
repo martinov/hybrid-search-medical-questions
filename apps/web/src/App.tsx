@@ -31,8 +31,8 @@ export function App(): ReactElement {
 
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", fontFamily: "system-ui" }}>
-      <h1>Netea — Medical Question Search</h1>
-      <p>Welcome — ask about a clinical scenario or a medical topic.</p>
+      <h1>Lecturio - Medical Question Search</h1>
+      <p>Welcome - ask about a clinical scenario or a medical topic.</p>
 
       <div style={{ marginTop: "1.5rem" }}>
         {messages.map((message) => {
