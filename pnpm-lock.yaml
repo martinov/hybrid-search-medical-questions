@@ -207,6 +207,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.0
         version: 3.0.63(zod@4.4.3)
+      '@ai-sdk/provider':
+        specifier: ^3.0.0
+        version: 3.0.10
       '@netea/db':
         specifier: workspace:*
         version: link:../db

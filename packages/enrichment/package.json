@@ -17,6 +17,7 @@
     "@netea/observability": "workspace:*",
     "@netea/schemas": "workspace:*",
     "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/provider": "^3.0.0",
     "ai": "^6.0.0",
     "zod": "^4.4.0"
   },
