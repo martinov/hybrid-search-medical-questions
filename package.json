@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:acceptance": "vitest run tests/acceptance",
+    "test:acceptance": "vitest run tests/acceptance --no-file-parallelism",
     "test:e2e": "playwright test",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",

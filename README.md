@@ -62,13 +62,13 @@ If the corpus has no topical match (try *"questions about deep-sea hydrothermal 
 pnpm db:up:test
 
 # Acceptance suite — 40 scenarios across 6 slices
-pnpm test:acceptance -- --no-file-parallelism
+pnpm test:acceptance
 
 # Type-check everything
 pnpm typecheck
 ```
 
-The `--no-file-parallelism` flag is required: `migrate()` runs in each file's `beforeAll` and the parallel default can race on schema creation. This is a known infra limitation documented as an open item.
+The `test:acceptance` script bakes in `--no-file-parallelism` because `migrate()` runs in each file's `beforeAll` and the parallel default can race on schema creation. This is a known infra limitation documented in the open items.
 
 Browser E2E (Playwright spec lives at `tests/e2e/`):
 
@@ -156,7 +156,7 @@ Verified against the npm registry at submission time (2026-05-13):
 | --- | --- |
 | `pnpm install` | Install all workspace dependencies |
 | `pnpm typecheck` | Run `tsc --noEmit` across every package |
-| `pnpm test:acceptance -- --no-file-parallelism` | Run all 40 acceptance scenarios sequentially |
+| `pnpm test:acceptance` | Run all 40 acceptance scenarios (sequentially, baked-in `--no-file-parallelism`) |
 | `pnpm test:e2e` | Run Playwright E2E browser tests (requires dev stack running) |
 | `pnpm lint` | Run ESLint |
 | `pnpm db:up` | Bring up dev Postgres on port 5432 |
