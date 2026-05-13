@@ -1,0 +1,35 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@netea/schemas": ["packages/schemas/src/index.ts"],
+      "@netea/schemas/*": ["packages/schemas/src/*"],
+      "@netea/db": ["packages/db/src/index.ts"],
+      "@netea/db/*": ["packages/db/src/*"],
+      "@netea/enrichment": ["packages/enrichment/src/index.ts"],
+      "@netea/enrichment/*": ["packages/enrichment/src/*"],
+      "@netea/search": ["packages/search/src/index.ts"],
+      "@netea/search/*": ["packages/search/src/*"],
+      "@netea/observability": ["packages/observability/src/index.ts"],
+      "@netea/observability/*": ["packages/observability/src/*"],
+      "@netea/api": ["apps/api/src/index.ts"],
+      "@netea/api/*": ["apps/api/src/*"],
+      "@netea/ingestion-service": ["apps/ingestion/src/index.ts"],
+      "@netea/ingestion-service/*": ["apps/ingestion/src/*"],
+      "@netea/web": ["apps/web/src/index.ts"],
+      "@netea/web/*": ["apps/web/src/*"]
+    },
+    "noEmit": true
+  },
+  "include": [
+    "apps/**/src/**/*.ts",
+    "apps/**/src/**/*.tsx",
+    "packages/**/src/**/*.ts",
+    "tests/_helpers/**/*.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js"
+  ],
+  "exclude": ["**/node_modules", "**/dist", "**/build", "tests/acceptance/**", "tests/e2e/**"]
+}

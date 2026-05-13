@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: netea-postgres-test
+    environment:
+      POSTGRES_USER: netea
+      POSTGRES_PASSWORD: netea
+      POSTGRES_DB: netea_test
+    ports:
+      - "5433:5432"
+    # tmpfs makes the test data dir ephemeral and ~6x faster (Expansion F §5a)
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "netea", "-d", "netea_test"]
+      interval: 1s
+      timeout: 2s
+      retries: 30

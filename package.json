@@ -1,0 +1,51 @@
+{
+  "name": "netea-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Netea hybrid-search medical-question PoC (staff engineer take-home)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:acceptance": "vitest run tests/acceptance",
+    "test:e2e": "playwright test",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:up:test": "docker compose -f docker-compose.test.yml up -d postgres",
+    "db:down:test": "docker compose -f docker-compose.test.yml down",
+    "db:migrate": "pnpm --filter @netea/db run migrate",
+    "ingest:one": "tsx apps/ingestion/src/cli.ts ingest --file data/sample-questions.json --limit 1",
+    "ingest": "tsx apps/ingestion/src/cli.ts ingest --file data/sample-questions.json",
+    "dev:api": "pnpm --filter @netea/api run dev",
+    "dev:web": "pnpm --filter @netea/web run dev",
+    "dev": "turbo run dev --parallel"
+  },
+  "devDependencies": {
+    "@netea/api": "workspace:*",
+    "@netea/db": "workspace:*",
+    "@netea/enrichment": "workspace:*",
+    "@netea/ingestion-service": "workspace:*",
+    "@netea/observability": "workspace:*",
+    "@netea/schemas": "workspace:*",
+    "@netea/search": "workspace:*",
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "ai": "^6.0.0",
+    "eslint": "^9.18.0",
+    "tsx": "^4.21.0",
+    "turbo": "^2.9.0",
+    "typescript": "^6.0.0",
+    "vitest": "^2.1.0",
+    "zod": "^4.4.0"
+  }
+}

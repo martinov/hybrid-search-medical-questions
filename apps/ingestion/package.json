@@ -1,0 +1,33 @@
+{
+  "name": "@netea/ingestion-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "netea-ingest": "./src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@netea/db": "workspace:*",
+    "@netea/enrichment": "workspace:*",
+    "@netea/observability": "workspace:*",
+    "@netea/schemas": "workspace:*",
+    "@ai-sdk/openai": "^3.0.0",
+    "ai": "^6.0.0",
+    "commander": "^14.0.0",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.0"
+  }
+}

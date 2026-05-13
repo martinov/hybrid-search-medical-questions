@@ -1,0 +1,112 @@
+[
+  {
+    "title": "Cardiology: Patient Symptoms",
+    "content": "A 68-year-old man presents with progressively worsening shortness of breath over the past 3 weeks, associated with bilateral lower-extremity swelling and orthopnea. On examination, jugular venous distension is noted. Which finding most strongly supports a diagnosis of acute decompensated heart failure?",
+    "answers": [
+      { "content": "Elevated jugular venous pressure with peripheral edema", "is_correct": true },
+      { "content": "Isolated dry cough without other findings", "is_correct": false },
+      { "content": "Unilateral leg swelling with calf tenderness", "is_correct": false },
+      { "content": "Productive cough with green sputum", "is_correct": false }
+    ],
+    "explanation": "Elevated JVP combined with peripheral edema is a classic sign of right-sided heart failure secondary to left-sided dysfunction in acute decompensated heart failure. Unilateral leg swelling suggests DVT; productive green sputum suggests pneumonia; isolated dry cough is non-specific."
+  },
+  {
+    "title": "Cardiology: ACS antiplatelet therapy",
+    "content": "A 59-year-old man with a non-ST-elevation myocardial infarction undergoes percutaneous coronary intervention with drug-eluting stent placement. He is started on aspirin 81 mg daily and a P2Y12 inhibitor. Which P2Y12 inhibitor offers the most rapid onset of platelet inhibition for this clinical scenario?",
+    "answers": [
+      { "content": "Clopidogrel", "is_correct": false },
+      { "content": "Ticagrelor", "is_correct": true },
+      { "content": "Prasugrel", "is_correct": false },
+      { "content": "Cilostazol", "is_correct": false }
+    ],
+    "explanation": "Ticagrelor is a reversible, non-thienopyridine P2Y12 inhibitor with rapid onset (peak inhibition ~2 hours) and is preferred post-PCI for acute coronary syndromes per the PLATO trial. Clopidogrel requires hepatic activation and is slower. Prasugrel is also fast but contraindicated in prior stroke/TIA. Cilostazol is a PDE3 inhibitor, not a P2Y12 inhibitor."
+  },
+  {
+    "title": "Pulmonology: Acute Asthma Exacerbation",
+    "content": "A 24-year-old woman with known asthma presents to the emergency department with acute dyspnea, expiratory wheezing, and a peak expiratory flow rate of 45 percent of her personal best. After initial oxygen therapy, which first-line pharmacologic intervention is most appropriate?",
+    "answers": [
+      { "content": "Inhaled albuterol (short-acting beta-2 agonist)", "is_correct": true },
+      { "content": "Inhaled tiotropium (long-acting muscarinic antagonist)", "is_correct": false },
+      { "content": "Intravenous magnesium sulfate as initial agent", "is_correct": false },
+      { "content": "Intravenous theophylline", "is_correct": false }
+    ],
+    "explanation": "Inhaled short-acting beta-2 agonists (albuterol) are first-line for acute bronchospasm. Tiotropium is for chronic management. IV magnesium is reserved for severe refractory exacerbations after first-line therapy. Theophylline is no longer recommended for acute attacks due to its narrow therapeutic window."
+  },
+  {
+    "title": "Pulmonology: Community-Acquired Pneumonia",
+    "content": "A 62-year-old previously healthy man presents with 4 days of fever, productive cough with rust-colored sputum, and right-sided pleuritic chest pain. Chest X-ray shows a right lower lobe consolidation. He is hemodynamically stable and managed as an outpatient. Which empiric antibiotic regimen is most appropriate for this presentation?",
+    "answers": [
+      { "content": "Oral amoxicillin or a macrolide such as azithromycin", "is_correct": true },
+      { "content": "Intravenous vancomycin plus piperacillin-tazobactam", "is_correct": false },
+      { "content": "Oral metronidazole alone", "is_correct": false },
+      { "content": "Oral acyclovir", "is_correct": false }
+    ],
+    "explanation": "Rust-colored sputum classically suggests Streptococcus pneumoniae. Outpatient empiric therapy for community-acquired pneumonia in healthy adults uses amoxicillin or a macrolide per IDSA/ATS guidelines. Vancomycin + piperacillin-tazobactam targets nosocomial pathogens. Metronidazole covers anaerobes only. Acyclovir treats herpesviruses, not bacteria."
+  },
+  {
+    "title": "Endocrinology: Diabetic Ketoacidosis",
+    "content": "A 23-year-old woman with type 1 diabetes presents with nausea, vomiting, polyuria, and abdominal pain after missing two days of insulin. Laboratory studies reveal glucose 480 mg/dL, arterial pH 7.21, bicarbonate 12 mEq/L, anion gap 22, and elevated serum ketones. After initial fluid resuscitation, which intervention should be initiated next to manage her diabetic ketoacidosis?",
+    "answers": [
+      { "content": "Intravenous regular insulin infusion at 0.1 units/kg/hour", "is_correct": true },
+      { "content": "Subcutaneous long-acting insulin glargine alone", "is_correct": false },
+      { "content": "Oral metformin", "is_correct": false },
+      { "content": "Intravenous sodium bicarbonate as first-line therapy", "is_correct": false }
+    ],
+    "explanation": "After volume resuscitation, continuous IV regular insulin at 0.1 units/kg/hour is the standard treatment for DKA to suppress ketogenesis and normalize the anion gap. Long-acting basal insulin alone cannot achieve rapid metabolic correction. Metformin is contraindicated in acidosis. Bicarbonate is reserved for pH < 6.9 — it is not first-line."
+  },
+  {
+    "title": "Endocrinology: Thyroid Storm",
+    "content": "A 35-year-old woman with poorly controlled Graves disease presents with fever of 40 degrees Celsius, heart rate 150, agitation, and altered mental status one day after an emergency cholecystectomy. The leading clinical diagnosis is thyroid storm. Which agent should be administered FIRST to inhibit new thyroid hormone synthesis and peripheral T4-to-T3 conversion?",
+    "answers": [
+      { "content": "Propylthiouracil (PTU)", "is_correct": true },
+      { "content": "Levothyroxine", "is_correct": false },
+      { "content": "Iodinated contrast media before any antithyroid drug", "is_correct": false },
+      { "content": "Radioactive iodine I-131", "is_correct": false }
+    ],
+    "explanation": "PTU blocks new thyroid hormone synthesis AND peripheral T4-to-T3 conversion, making it preferred over methimazole in thyroid storm. Levothyroxine is hormone replacement (wrong direction). Iodinated contrast must follow antithyroid drug initiation by ~1 hour or it can worsen the storm via the Jod-Basedow effect. Radioactive iodine is for definitive long-term therapy, not acute storm."
+  },
+  {
+    "title": "Neurology: Acute Ischemic Stroke",
+    "content": "A 68-year-old hypertensive man arrives at the emergency department 90 minutes after acute onset of right-sided hemiparesis and expressive aphasia. Non-contrast head CT shows no hemorrhage and no early ischemic changes. His blood pressure is 175/95 mmHg and there are no contraindications to thrombolysis. Which time-critical intervention is most appropriate?",
+    "answers": [
+      { "content": "Intravenous alteplase (tissue plasminogen activator)", "is_correct": true },
+      { "content": "Immediate craniotomy for decompression", "is_correct": false },
+      { "content": "Oral aspirin alone with admission for observation", "is_correct": false },
+      { "content": "Intravenous heparin bolus and infusion", "is_correct": false }
+    ],
+    "explanation": "Within the 4.5-hour window from symptom onset, IV alteplase is the standard-of-care reperfusion therapy for acute ischemic stroke when no hemorrhage is present and BP is controllable. Craniotomy is reserved for malignant edema. Aspirin is added 24 hours after thrombolysis. IV heparin is NOT indicated and increases hemorrhage risk."
+  },
+  {
+    "title": "Neurology: Migraine with Aura",
+    "content": "A 28-year-old woman presents with recurrent unilateral throbbing headaches preceded by a 20-minute episode of zigzag visual scintillations. Episodes last 8 hours with associated nausea and photophobia and resolve with rest in a dark room. She has 3 episodes per month. Which acute treatment is most appropriate for an individual attack?",
+    "answers": [
+      { "content": "Oral sumatriptan at headache onset", "is_correct": true },
+      { "content": "Daily prophylactic propranolol only, no acute therapy", "is_correct": false },
+      { "content": "Oral acetazolamide", "is_correct": false },
+      { "content": "Oral verapamil for an acute attack", "is_correct": false }
+    ],
+    "explanation": "Triptans (sumatriptan) are 5-HT1B/1D agonists and first-line acute therapy for moderate-to-severe migraine. Propranolol is preventive, not abortive. Acetazolamide is used in idiopathic intracranial hypertension. Verapamil is used for cluster-headache prophylaxis, not acute migraine."
+  },
+  {
+    "title": "Nephrology: Acute Kidney Injury",
+    "content": "A 72-year-old man on chronic NSAIDs for osteoarthritis is admitted with sepsis from a urinary source. Two days into hospitalization his serum creatinine rises from 1.0 to 2.3 mg/dL and urine output falls below 0.3 mL/kg/hour. Urinalysis shows muddy-brown granular casts. Which underlying mechanism most likely explains his acute kidney injury?",
+    "answers": [
+      { "content": "Acute tubular necrosis from ischemic and nephrotoxic injury", "is_correct": true },
+      { "content": "Pre-renal azotemia from volume depletion alone", "is_correct": false },
+      { "content": "Post-renal obstruction from a stone", "is_correct": false },
+      { "content": "Acute interstitial nephritis from a beta-lactam", "is_correct": false }
+    ],
+    "explanation": "Muddy-brown granular casts are pathognomonic for acute tubular necrosis, here driven by sepsis-related ischemia compounded by NSAID-induced renal hypoperfusion. Pre-renal azotemia presents with bland sediment and BUN:Cr > 20. Post-renal AKI would show hydronephrosis on imaging. Interstitial nephritis classically presents with white-cell casts and eosinophiluria, not muddy-brown casts."
+  },
+  {
+    "title": "Infectious Disease: Bacterial Meningitis",
+    "content": "A 21-year-old college student presents with 12 hours of high fever, severe headache, neck stiffness, and a non-blanching petechial rash. He is hemodynamically stable. After blood cultures are obtained and lumbar puncture is being arranged, which empiric antibiotic regimen should be started without delay for suspected community-acquired bacterial meningitis?",
+    "answers": [
+      { "content": "Intravenous ceftriaxone plus vancomycin (with dexamethasone)", "is_correct": true },
+      { "content": "Oral azithromycin alone", "is_correct": false },
+      { "content": "Intravenous acyclovir as sole therapy", "is_correct": false },
+      { "content": "Intravenous fluconazole", "is_correct": false }
+    ],
+    "explanation": "Empiric therapy for community-acquired bacterial meningitis in young adults covers Neisseria meningitidis and Streptococcus pneumoniae using ceftriaxone plus vancomycin; dexamethasone reduces neurologic sequelae in pneumococcal disease. Azithromycin lacks CNS penetration for these pathogens. Acyclovir treats HSV encephalitis. Fluconazole is for cryptococcal meningitis in immunocompromised hosts."
+  }
+]

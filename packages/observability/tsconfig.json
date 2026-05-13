@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "noEmit": true,
+    "rootDir": "../..",
+    "paths": {
+      "@netea/schemas": ["../schemas/src/index.ts"],
+      "@netea/schemas/*": ["../schemas/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
