@@ -1,4 +1,4 @@
-# Netea — Hybrid Search + AI Ingestion Pipeline (Staff Engineer Take-Home)
+# Hybrid Search + AI Ingestion Pipeline
 
 Backend system that ingests raw medical exam questions, enriches them via an
 LLM with Bloom's-taxonomy + medical-keyword metadata, indexes them into a
