@@ -39,7 +39,7 @@ export const SearchResultSchema = z.discriminatedUnion("kind", [
     .object({
       kind: z.literal("no_match"),
       results: z.array(SearchResultItemSchema).length(0),
-      reason: z.literal("no_match"),
+      reason: z.enum(["no_match", "no_match_with_filter"]),
     })
     .strict(),
 ]);

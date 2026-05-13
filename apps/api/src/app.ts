@@ -16,6 +16,8 @@ import { getDb } from "@netea/db";
 import { hybridSearch } from "@netea/search";
 import {
   SearchQuerySchema,
+  BloomLevel,
+  BLOOM_LEVELS_POC,
   type SearchQuery,
 } from "@netea/schemas";
 import { Hono } from "hono";
@@ -109,6 +111,19 @@ export function createApp(deps: AppDeps): NeteaApp {
     const raw = await c.req.json().catch(() => ({}));
     const parsed = SearchBodySchema.safeParse(raw);
     if (!parsed.success) {
+      const bloomIssue = parsed.error.issues.find((iss) =>
+        iss.path.some((p) => p === "bloom_level"),
+      );
+      if (bloomIssue) {
+        return c.json(
+          {
+            error: "invalid_bloom_level: must be one of the valid Bloom levels",
+            valid_values: [...BLOOM_LEVELS_POC],
+            issues: parsed.error.issues,
+          },
+          400,
+        );
+      }
       return c.json(
         { error: "invalid_query", issues: parsed.error.issues },
         400,
@@ -122,16 +137,32 @@ export function createApp(deps: AppDeps): NeteaApp {
   });
 
   // searchQuestions tool used by the chat agent.
+  // bloom_level is exposed so the model can pass an explicit cognitive-level
+  // filter when the user's natural-language intent signals one
+  // (e.g. "test my understanding" -> application; "let me memorize" -> recall;
+  // "complex reasoning" -> analysis). See the system prompt below.
   const searchQuestionsTool = tool({
     description:
-      "Search the medical question bank for questions matching a clinical query. Returns up to 5 questions with title, content, and bloom level. Returns no_match if nothing relevant exists — do NOT invent titles.",
+      "Search the medical question bank for questions matching a clinical query. " +
+      "Returns up to 5 questions with title, content, and bloom level. " +
+      "Pass an optional bloom_level (recall|application|analysis) when the user " +
+      "asks for a specific cognitive level. Returns no_match (or no_match_with_filter) " +
+      "if nothing relevant exists — do NOT invent titles.",
     inputSchema: z.object({
       query: z.string().min(1).describe("Clinical-intent query phrased in natural language"),
       limit: z.number().int().min(1).max(10).default(5),
+      bloom_level: BloomLevel.optional().describe(
+        "Optional Bloom cognitive level filter. Use only when the user's " +
+          "intent is clearly bound to one level.",
+      ),
     }),
     execute: async (input) => {
       const result = await hybridSearch(
-        { query: input.query, limit: input.limit ?? 5 } as SearchQuery,
+        {
+          query: input.query,
+          limit: input.limit ?? 5,
+          ...(input.bloom_level ? { bloom_level: input.bloom_level } : {}),
+        } as SearchQuery,
         { embeddingModel: deps.embeddingModel },
       );
       return result;
@@ -157,7 +188,19 @@ export function createApp(deps: AppDeps): NeteaApp {
         "`searchQuestions` tool with a concise clinical-intent query. Then summarize " +
         "the results truthfully — reference each question by its exact title and " +
         "include a content excerpt of at least 100 characters. NEVER invent titles " +
-        "or content. If `searchQuestions` returns `no_match`, say so honestly.",
+        "or content. " +
+        "\n\nBloom-level intent extraction: when the user's wording signals a " +
+        "specific cognitive level, pass the corresponding `bloom_level` argument " +
+        "to `searchQuestions`. Mapping (PoC 3-level subset): " +
+        "  - 'recall' / 'memorize' / 'flashcard' / 'remember' / 'list' / 'name' -> bloom_level=recall\n" +
+        "  - 'apply' / 'application-level' / 'test my understanding' / 'use the concept' / 'clinical case' -> bloom_level=application\n" +
+        "  - 'analysis' / 'analyze' / 'complex reasoning' / 'differential diagnosis' / 'compare and contrast' -> bloom_level=analysis\n" +
+        "When the user explicitly says 'only X-level' or 'just analysis questions', " +
+        "ALWAYS pass the filter. " +
+        "\n\nResult-set policy: if `searchQuestions` returns `no_match`, say so " +
+        "honestly. If it returns `no_match_with_filter`, explicitly state that no " +
+        "questions matched the requested Bloom level — do NOT silently swap to a " +
+        "different level — and offer to broaden to an adjacent level instead.",
       tools: { searchQuestions: searchQuestionsTool },
       messages: modelMessages,
     });

@@ -87,11 +87,14 @@ export async function hybridSearch(
   // 3. Fuse via RRF.
   const fused: FusedHit[] = rrf(lexicalHits, semanticHits);
 
+  const filterApplied = Boolean(input.bloom_level);
+  const emptyReason = filterApplied ? "no_match_with_filter" : "no_match";
+
   if (fused.length === 0) {
     return {
       kind: "no_match",
       results: [],
-      reason: "no_match",
+      reason: emptyReason,
     };
   }
 
@@ -102,6 +105,10 @@ export async function hybridSearch(
   for (const fusedHit of fused.slice(0, limit)) {
     const row = hydration.get(fusedHit.id);
     if (!row) continue;
+    // Defense in depth: even if SQL filter were bypassed, drop any row whose
+    // bloom_level does not match the requested filter. Guarantees KPI #5:
+    // 100% of returned hits match the requested bloom_level when explicit.
+    if (input.bloom_level && row.bloom_level !== input.bloom_level) continue;
     results.push({
       id: row.id,
       title: row.title,
@@ -113,7 +120,7 @@ export async function hybridSearch(
   }
 
   if (results.length === 0) {
-    return { kind: "no_match", results: [], reason: "no_match" };
+    return { kind: "no_match", results: [], reason: emptyReason };
   }
 
   return { kind: "results", results, total: results.length };
