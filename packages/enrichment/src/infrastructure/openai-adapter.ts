@@ -49,6 +49,8 @@ export type InvokeLlmArgs = {
   promptText: string;
   temperature?: number;
   maxOutputTokens?: number;
+  /** Per-request abort after this many ms (default 60_000). */
+  timeoutMs?: number;
 };
 
 export type InvokeLlmResult = {
@@ -56,6 +58,16 @@ export type InvokeLlmResult = {
   finishReason: string;
   usage: { inputTokens: number; outputTokens: number };
 };
+
+// Models that bill reasoning tokens via the OpenAI reasoning API. For these
+// we must cap reasoning effort and provide a generous maxOutputTokens budget
+// (reasoning tokens count toward the output cap), or the call can hang
+// indefinitely on a single question.
+const REASONING_MODEL_PATTERN = /^(gpt-5|o[134])/i;
+
+function isReasoningModel(modelId: string): boolean {
+  return REASONING_MODEL_PATTERN.test(modelId);
+}
 
 /**
  * Invoke a LanguageModelV3 with a single user-text prompt and return the
@@ -66,6 +78,7 @@ export async function invokeLanguageModelV3(
   model: LanguageModelV3,
   args: InvokeLlmArgs,
 ): Promise<InvokeLlmResult> {
+  const reasoning = isReasoningModel(model.modelId);
   const callOptions: LanguageModelV3CallOptions = {
     prompt: [
       {
@@ -74,7 +87,18 @@ export async function invokeLanguageModelV3(
       },
     ],
     temperature: args.temperature ?? 0,
-    maxOutputTokens: args.maxOutputTokens,
+    // Reasoning models count reasoning tokens against the output cap, so
+    // give them more headroom than chat models. Non-reasoning default of
+    // 1024 is plenty for the structured enrichment JSON (~250 tokens).
+    maxOutputTokens: args.maxOutputTokens ?? (reasoning ? 4096 : 1024),
+    abortSignal: AbortSignal.timeout(args.timeoutMs ?? 60_000),
+    // OpenAI JSON mode: forces raw JSON output (no ```json fences).
+    // Schema is not enforced here — downstream Zod parse still validates
+    // shape; this only fixes the markdown-wrapping problem.
+    responseFormat: { type: "json" },
+    ...(reasoning
+      ? { providerOptions: { openai: { reasoningEffort: "minimal" } } }
+      : {}),
   };
   const result: LanguageModelV3GenerateResult = await model.doGenerate(callOptions);
   const text = result.content
