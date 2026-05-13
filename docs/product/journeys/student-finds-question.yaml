@@ -1,0 +1,232 @@
+schema_version: 1
+
+journey:
+  name: "Student finds a topical question by clinical intent"
+  goal: "Locate practice questions that test the same clinical reasoning as a textbook scenario, without depending on exact keyword overlap"
+  persona: medical-student
+  primary_job: find-questions-by-clinical-intent
+  secondary_jobs:
+    - calibrate-cognitive-difficulty
+    - feel-confident-before-exam
+
+  emotional_arc:
+    start: "anxious (under-prepared, time-constrained, doubting own vocabulary)"
+    middle: "focused (the agent responded fast and the first results look topical -- engaging)"
+    end: "confident (session ended with a concrete set of questions reviewed and gaps identified)"
+
+steps:
+
+  - id: 1
+    name: "Enter the chat surface and pose a clinical-intent question"
+    actor: medical-student
+    entry_point: "Browser at /, chat input field with placeholder 'Ask about a topic, scenario, or symptom...'"
+    user_action: |
+      Types a free-text query in clinical language, e.g.,
+      "Show me questions about a patient with shortness of breath, JVD, and ankle swelling"
+
+    tui_mockup: |
+      +-- Browser: localhost:5173 ------------------------------------+
+      | Netea Q&A                                            [v0.1]   |
+      +---------------------------------------------------------------+
+      |                                                               |
+      |  [Welcome. Ask about a clinical scenario, symptom, or topic.] |
+      |                                                               |
+      |  +---------------------------------------------------------+  |
+      |  | Show me questions about a patient with shortness of    |  |
+      |  | breath, JVD, and ankle swelling                         |  |
+      |  +---------------------------------------------------------+  |
+      |                                                    [Send >>]  |
+      +---------------------------------------------------------------+
+
+    shared_artifacts:
+      - name: chat_user_message
+        source: "POST /api/chat request body, field: messages[-1].content"
+        displayed_as: "${user_query}"
+        consumers: ["chat UI", "agent retrieval tool input", "search API query parameter"]
+
+    emotional_state:
+      entry: "anxious -- doubting whether the tool will understand her phrasing"
+      exit: "expectant -- has committed the query, waiting for a signal"
+
+    integration_checkpoint: |
+      Query string captured verbatim. No client-side parsing or keyword extraction
+      before the agent sees it. The agent decides whether to invoke search,
+      reformulate, or ask a clarifying question.
+
+    failure_modes:
+      - "Network failure on POST /api/chat -- UI shows retryable error, query preserved in input"
+      - "Backend 5xx -- chat shows 'Something went wrong. Retry?' with the original query intact"
+
+    gherkin: |
+      Scenario: Student submits a clinical-intent query
+        Given Priya is on the chat page with an empty conversation
+        When she types "Show me questions about a patient with shortness of breath, JVD, and ankle swelling"
+        And presses Send
+        Then the message appears in the conversation history within 100ms
+        And a streaming response from the agent begins within 2 seconds
+
+  - id: 2
+    name: "Agent retrieves candidate questions via hybrid search"
+    actor: agent
+    user_action: "(passive -- watches streaming response and a 'searching...' status)"
+
+    tui_mockup: |
+      +-- Conversation ----------------------------------------------+
+      | YOU:  Show me questions about a patient with shortness of    |
+      |       breath, JVD, and ankle swelling                        |
+      |                                                              |
+      | AGENT: (Searching the question bank...)                      |
+      |        [tool: search_questions called with intent="..."]     |
+      |                                                              |
+      +--------------------------------------------------------------+
+
+    shared_artifacts:
+      - name: search_query_string
+        source: "agent tool-call argument from Mastra/Vercel AI tool schema"
+        displayed_as: "${search_query}"
+        consumers: ["POST /api/search body", "agent reasoning log"]
+      - name: hybrid_search_results
+        source: "Postgres query combining tsvector (lexical) + pgvector (semantic) with hybrid ranking"
+        displayed_as: "${results[]}"
+        consumers: ["agent context window", "chat UI question cards"]
+
+    emotional_state:
+      entry: "expectant"
+      exit: "engaged -- something is happening, fast"
+
+    integration_checkpoint: |
+      The agent's tool call must produce a search query that is either (a)
+      the verbatim user query, or (b) a reformulation that preserves clinical
+      intent. The hybrid-search backend must return within p95 < 800ms for the
+      DB query portion. Top-k = 5 by default.
+
+    failure_modes:
+      - "LLM hallucinates a tool call with empty query -- agent returns 'I need more detail' instead of empty search"
+      - "Search returns zero results -- agent must NOT pretend to have results; it must say so and suggest reformulation"
+      - "Search latency exceeds 5s -- agent streams a 'still searching' status; UI does not look frozen"
+
+    gherkin: |
+      Scenario: Agent invokes hybrid search for a clinical-intent query
+        Given the agent has received Priya's query
+        When the agent decides retrieval is needed
+        Then the agent calls the search tool with a query string preserving clinical intent
+        And the search tool returns up to 5 candidate questions within 800ms (p95)
+        And each result includes title, content excerpt, bloom_level, and relevance signals
+
+      Scenario: Search returns no results
+        Given the agent has called the search tool with Priya's query
+        And the hybrid search returns zero results
+        When the agent composes a response
+        Then the agent explicitly states no questions matched
+        And the agent suggests a broader or differently-phrased query
+        And the agent does not invent question titles
+
+  - id: 3
+    name: "Agent presents results with reasoning"
+    actor: agent
+    user_action: "Reads results, decides which one to open"
+
+    tui_mockup: |
+      +-- Conversation ----------------------------------------------+
+      | AGENT: I found 3 questions about heart failure presentations |
+      |        with congestive signs (dyspnea, JVD, peripheral edema)|
+      |                                                              |
+      |        1. [Cardiology] Acute decompensated HF in ED          |
+      |           Bloom: Application                                 |
+      |           "A 68-year-old man presents with..." [open]        |
+      |                                                              |
+      |        2. [Cardiology] Right vs. left HF distinguishing      |
+      |           Bloom: Analysis                                    |
+      |           "Which finding most strongly suggests right..." [open]
+      |                                                              |
+      |        3. [Cardiology] HFrEF pharmacotherapy                 |
+      |           Bloom: Application                                 |
+      |           "Which medication has mortality benefit..." [open] |
+      |                                                              |
+      |        Want me to filter to a specific Bloom level?          |
+      +--------------------------------------------------------------+
+
+    shared_artifacts:
+      - name: result_card_payload
+        source: "agent response stream (Vercel AI SDK message parts)"
+        displayed_as: "${results[]}"
+        consumers: ["chat UI question cards"]
+
+    emotional_state:
+      entry: "engaged"
+      exit: "validated -- the top result looks topical; she clicks it"
+
+    integration_checkpoint: |
+      Each result card displays at minimum: question title, content excerpt
+      (first ~200 chars), and bloom_level. The agent must cite which questions
+      it retrieved, not paraphrase invented ones.
+
+    failure_modes:
+      - "Agent paraphrases retrieved questions instead of citing them verbatim -- breaks trust"
+      - "Agent invents a question that does not exist in the corpus (hallucination)"
+      - "Results show but bloom_level is null -- enrichment gap visible to user"
+
+    gherkin: |
+      Scenario: Agent presents retrieved questions with metadata
+        Given the search returned 3 candidate questions
+        When the agent composes its response
+        Then each presented question references a real corpus question by id or title
+        And each presented question shows its bloom_level if available
+        And the agent does not introduce questions that were not in the search result set
+
+  - id: 4
+    name: "Student refines or commits"
+    actor: medical-student
+    user_action: "Either asks a follow-up ('only application-level please') or opens question #1"
+
+    tui_mockup: |
+      +-- Conversation ----------------------------------------------+
+      | YOU: Only application-level, please                          |
+      |                                                              |
+      | AGENT: Filtering to Bloom level: Application                 |
+      |        1. [Cardiology] Acute decompensated HF in ED          |
+      |        3. [Cardiology] HFrEF pharmacotherapy                 |
+      |        (2 of 3 results matched)                              |
+      +--------------------------------------------------------------+
+
+    shared_artifacts:
+      - name: bloom_filter
+        source: "agent conversation context (extracted intent)"
+        displayed_as: "${bloom_level_filter}"
+        consumers: ["search tool call", "result rendering"]
+
+    emotional_state:
+      entry: "validated"
+      exit: "in flow -- the tool keeps up with her thinking"
+
+    integration_checkpoint: |
+      Follow-up filtering uses conversation context. The agent re-issues the
+      search with the additional filter, OR filters the existing result set
+      client-side if cached. Either is acceptable; the user sees a fast,
+      coherent update.
+
+    failure_modes:
+      - "Agent loses conversation context and re-searches from scratch, returning unrelated results"
+      - "Filter applied but no matching results -- agent should say so, not return empty"
+
+    gherkin: |
+      Scenario: Student refines by Bloom level
+        Given the agent has presented 3 results including 2 application-level questions
+        When Priya asks for application-level only
+        Then the agent presents the 2 application-level questions
+        And the agent explicitly states the filter that was applied
+        And the agent does not introduce new questions not in the original search
+
+integration_validation:
+  shared_artifact_consistency:
+    - artifact: chat_user_message
+      must_match_across: [1, 2]
+      failure_message: "User query must reach the agent verbatim; client-side mutation would break trust"
+    - artifact: hybrid_search_results
+      must_match_across: [2, 3, 4]
+      failure_message: "Result set referenced by the agent must be a subset of what hybrid search returned"
+
+changelog:
+  - date: "2026-05-13"
+    feature: hybrid-search-medical-questions
+    change: "Initial journey: student-finds-question (anxious -> focused -> confident arc)"

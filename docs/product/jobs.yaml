@@ -1,0 +1,145 @@
+# SSOT: Jobs to Be Done registry
+# This file is the canonical source of truth for all JTBD job statements.
+# Every user story in any feature MUST reference a job_id from this file
+# (or use job_id: infrastructure-only with an infrastructure_rationale).
+#
+# Job statement structure follows the canonical JTBD format:
+#   When [situation], I want to [motivation], so I can [outcome].
+#
+# Schema:
+#   jobs:
+#     <job_id>:
+#       statement: "When..., I want to..., so I can..."
+#       persona: <persona_id from personas/*.md>
+#       primary_dimension: functional | emotional | social
+#       desired_outcomes: [list of measurable outcome statements, ODI-style]
+#       opportunity_score: <importance + max(0, importance - satisfaction)>
+#       owner_feature: <feature-id that primarily addresses this job>
+
+schema_version: 1
+project: netea-task
+domain: medical-education
+last_updated: "2026-05-13"
+
+jobs:
+
+  # -------------------------------------------------------------------------
+  # MEDICAL STUDENT JOBS (the searcher) -- primary persona, exam-prep anxiety
+  # -------------------------------------------------------------------------
+
+  find-questions-by-clinical-intent:
+    statement: >-
+      When I am studying a clinical topic for my board exam and a textbook
+      description triggers uncertainty, I want to find practice questions
+      that test the same clinical reasoning even if they use different
+      vocabulary, so I can verify my understanding before the exam.
+    persona: medical-student
+    primary_dimension: functional
+    secondary_dimensions: [emotional]
+    desired_outcomes:
+      - "Minimize the time to retrieve a topical question from a free-text query (target: p95 < 2.5s end-to-end)"
+      - "Maximize the likelihood that the top-3 results contain at least one topically-correct question (target: >= 80% on seed queries)"
+      - "Minimize the cognitive load of reformulating queries when initial search returns nothing useful"
+    opportunity_score: 16  # importance 9 + (9 - 2) = high-pain, under-served
+    owner_feature: hybrid-search-medical-questions
+
+  calibrate-cognitive-difficulty:
+    statement: >-
+      When I have a limited amount of study time before an exam, I want
+      practice questions that match the cognitive level I am being tested
+      on (recall vs. application vs. analysis), so I can spend my time on
+      the right kind of practice instead of trivia or over-complexity.
+    persona: medical-student
+    primary_dimension: functional
+    secondary_dimensions: [emotional]
+    desired_outcomes:
+      - "Maximize the precision of Bloom-level filtering (target: >= 85% agreement with expert re-labeling on a sample)"
+      - "Minimize the likelihood of mismatched-difficulty questions in a study session"
+    opportunity_score: 14  # importance 8 + (8 - 2) = high-pain, under-served
+    owner_feature: hybrid-search-medical-questions
+
+  feel-confident-before-exam:
+    statement: >-
+      When I am days away from a high-stakes exam and feeling under-prepared,
+      I want a study session to end with me knowing more than I did when I
+      started, so I can replace anxiety with evidence-based confidence.
+    persona: medical-student
+    primary_dimension: emotional
+    secondary_dimensions: [functional]
+    desired_outcomes:
+      - "Maximize the likelihood that each session ends with a concrete artifact (questions reviewed, gaps identified)"
+      - "Minimize the frequency of dead-end sessions (zero-result searches with no recovery path)"
+    opportunity_score: 15
+    owner_feature: hybrid-search-medical-questions
+
+  # -------------------------------------------------------------------------
+  # CONTENT/OPS ADMIN JOBS (the ingester) -- reliability + observability
+  # -------------------------------------------------------------------------
+
+  enrich-question-bank-reliably:
+    statement: >-
+      When new questions arrive from authors or content vendors, I want each
+      question enriched with high-quality metadata (Bloom level, medical
+      keywords, taxonomy tags) without manual review of every item, so I can
+      keep the searchable corpus growing without becoming the bottleneck.
+    persona: content-ops-admin
+    primary_dimension: functional
+    secondary_dimensions: [emotional]
+    desired_outcomes:
+      - "Maximize the proportion of questions that pass schema validation on first LLM attempt (target: >= 90%)"
+      - "Minimize the proportion of questions that end in quarantine after retries (target: <= 2%)"
+      - "Minimize the cost per 1000 enriched questions (target: budget tracked, alerted on overrun)"
+    opportunity_score: 14
+    owner_feature: hybrid-search-medical-questions
+
+  reprocess-when-prompts-change:
+    statement: >-
+      When the enrichment prompt or taxonomy changes, I want to re-enrich
+      affected questions deterministically and observe the delta, so I can
+      improve the corpus over time without losing track of what version of
+      prompt produced what metadata.
+    persona: content-ops-admin
+    primary_dimension: functional
+    desired_outcomes:
+      - "Maximize the traceability of every enriched record back to a prompt version (100% coverage)"
+      - "Minimize the time to re-enrich a subset (target: replay a 1000-question batch in under 30 min)"
+    opportunity_score: 12
+    owner_feature: hybrid-search-medical-questions
+
+  observe-pipeline-health:
+    statement: >-
+      When I am responsible for keeping the ingestion pipeline running, I
+      want clear signals about cost, latency, validation failure rates, and
+      LLM provider errors, so I can intervene before users notice degraded
+      search quality.
+    persona: content-ops-admin
+    primary_dimension: functional
+    desired_outcomes:
+      - "Maximize the proportion of pipeline failures surfaced with actionable context (no silent failures)"
+      - "Minimize mean time to detect enrichment quality regressions"
+    opportunity_score: 11
+    owner_feature: hybrid-search-medical-questions
+
+  # -------------------------------------------------------------------------
+  # CURRICULUM DESIGNER JOBS (tertiary) -- analytics-focused
+  # Surfaced from D3 (comprehensive UX research). Justifies the Bloom-level
+  # enrichment as more than just student-facing filtering -- it produces
+  # curriculum-level signal. Kept narrow to avoid scope inflation.
+  # -------------------------------------------------------------------------
+
+  analyze-bloom-distribution:
+    statement: >-
+      When I review a question bank for curriculum alignment, I want to see
+      how questions distribute across Bloom's taxonomy levels per topic, so
+      I can identify gaps where students lack practice at the right cognitive
+      level.
+    persona: curriculum-designer
+    primary_dimension: functional
+    desired_outcomes:
+      - "Maximize the accuracy of Bloom-distribution reports (depends on enrichment validity above)"
+    opportunity_score: 8  # importance 6 + (6 - 4); under-served but lower urgency for PoC
+    owner_feature: hybrid-search-medical-questions
+    notes: |
+      Out of scope for PoC walking skeleton and Release 1. The Bloom-level
+      field on enriched records is the foundation; analytics views are a
+      future slice.

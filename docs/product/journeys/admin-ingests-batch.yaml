@@ -1,0 +1,237 @@
+schema_version: 1
+
+journey:
+  name: "Admin ingests and enriches a batch of questions"
+  goal: "Take a JSON file of raw questions and produce an enriched, indexed, queryable corpus with provenance and quarantine for failures"
+  persona: content-ops-admin
+  primary_job: enrich-question-bank-reliably
+  secondary_jobs:
+    - reprocess-when-prompts-change
+    - observe-pipeline-health
+
+  emotional_arc:
+    start: "cautious (a new pipeline is a risk surface; LLM non-determinism is unfamiliar)"
+    middle: "alert (watching logs, validating early outputs against expectations)"
+    end: "confident (clean summary with cost, validation rate, quarantine count -- defensible)"
+
+steps:
+
+  - id: 1
+    name: "Sam invokes the ingestion CLI on a sample batch"
+    actor: content-ops-admin
+    entry_point: "Terminal: pnpm run ingest --file data/sample-questions.json"
+
+    tui_mockup: |
+      $ pnpm run ingest --file data/sample-questions.json
+
+      Netea ingestion v0.1
+      ====================
+      File:           data/sample-questions.json
+      Count:          10 questions
+      Prompt version: v1 (sha: 8af3c2)
+      Model:          gpt-4o-mini
+      Dry run:        no
+
+      [1/10] Cardiology: Patient Symptoms ........... ok (912ms, $0.0071)
+      [2/10] Pulmonology: Acute Asthma .............. ok (1.04s, $0.0083)
+      [3/10] Renal: AKI vs CKD ...................... ok (876ms, $0.0068)
+      ...
+
+    shared_artifacts:
+      - name: prompt_version
+        source: "src/enrichment/prompts/v1.ts (exports PROMPT_VERSION constant + sha)"
+        displayed_as: "${prompt_version}"
+        consumers: ["enriched_questions.prompt_version column", "CLI summary output", "logs"]
+      - name: model_name
+        source: "config / env: OPENAI_MODEL"
+        displayed_as: "${model}"
+        consumers: ["enriched_questions.model column", "CLI summary output", "logs", "cost estimation"]
+      - name: input_file_path
+        source: "CLI --file argument"
+        displayed_as: "${input_file}"
+        consumers: ["CLI banner", "logs", "audit record"]
+
+    emotional_state:
+      entry: "cautious -- about to spend money and write to a real DB"
+      exit: "alert -- watching for the first few records to validate the pipeline shape"
+
+    integration_checkpoint: |
+      Banner prints prompt version, model, count, file BEFORE any LLM call.
+      This gives Sam a moment to Ctrl-C if anything looks wrong.
+
+    failure_modes:
+      - "Input file unreadable -- exit code 2, clear error 'Cannot read data/sample-questions.json'"
+      - "Input JSON schema invalid -- exit code 2 with the Zod parse error and the offending question"
+      - "OPENAI_API_KEY missing -- exit code 2 before any LLM call"
+
+    gherkin: |
+      Scenario: Sam launches ingestion with a valid input file
+        Given a file data/sample-questions.json with 10 well-formed questions
+        And OPENAI_API_KEY is set
+        When Sam runs "pnpm run ingest --file data/sample-questions.json"
+        Then the banner shows file path, count, prompt version, and model name
+        And per-question progress lines stream as each is processed
+
+  - id: 2
+    name: "For each question, enrich with LLM and validate"
+    actor: pipeline
+    user_action: "(passive -- watches the per-question log lines stream by)"
+
+    tui_mockup: |
+      [4/10] Endocrinology: Diabetic Ketoacidosis ... RETRY 1/2 (schema fail)
+      [4/10] Endocrinology: Diabetic Ketoacidosis ... RETRY 2/2 (schema fail)
+      [4/10] Endocrinology: Diabetic Ketoacidosis ... QUARANTINED
+                                                   ^-- reason: bloom_level not in enum
+
+    shared_artifacts:
+      - name: enrichment_schema
+        source: "src/enrichment/schema.ts (Zod schema: bloom_level enum, keywords array, taxonomy_tags)"
+        displayed_as: "${EnrichmentSchema}"
+        consumers: ["LLM structured-output prompt", "post-LLM Zod parse", "DB column definitions"]
+      - name: quarantine_record
+        source: "quarantine table row"
+        displayed_as: "${quarantine[]}"
+        consumers: ["CLI summary count", "follow-up SQL inspection by Sam"]
+
+    emotional_state:
+      entry: "alert"
+      exit: "engaged -- the retry/quarantine logic worked correctly, even if the call failed; the system did the right thing"
+
+    integration_checkpoint: |
+      Every LLM call passes its raw response through Zod parse. On parse failure,
+      the system retries up to N times (config, default 2). On final failure, the
+      raw response and the parse error are written to the quarantine table along
+      with the source question. The main corpus is never written with invalid data.
+
+    failure_modes:
+      - "LLM returns valid JSON but bloom_level is 'application ' (trailing space) -- Zod enum check fails, retry"
+      - "LLM returns JSON-shaped string but field missing -- retry, then quarantine"
+      - "LLM rate-limit error -- exponential backoff, then retry; not counted toward schema-retry budget"
+      - "LLM provider down entirely -- pipeline pauses, prints clear error, exits cleanly so Sam can resume later"
+
+    gherkin: |
+      Scenario: Enrichment succeeds on first attempt
+        Given an LLM call returns a JSON payload matching the EnrichmentSchema
+        When the pipeline parses the response
+        Then the enriched record is written to the enriched_questions table
+        And the row carries prompt_version, model, enriched_at columns
+        And no quarantine row is created for this question
+
+      Scenario: Enrichment retries after schema failure, then succeeds
+        Given the first LLM response fails Zod validation
+        When the pipeline retries with backoff
+        And the second response passes Zod validation
+        Then the enriched record is written with retry_count = 1
+        And no quarantine row is created
+
+      Scenario: Enrichment quarantines after exhausted retries
+        Given the LLM returns invalid responses for retry attempts 1 and 2
+        When the pipeline exhausts the retry budget
+        Then a row is inserted into the quarantine table with the source question id, raw LLM responses, parse errors, and timestamp
+        And NO row is written to the enriched_questions table for this question
+        And the CLI per-question line shows "QUARANTINED" with the failure reason
+
+  - id: 3
+    name: "Compute embeddings and index"
+    actor: pipeline
+    user_action: "(passive)"
+
+    tui_mockup: |
+      [10/10] Hematology: Anemia Workup ............. ok (1.18s, $0.0091)
+
+      Embedding 9 enriched questions ...
+      Writing pgvector index ............ done (340ms)
+      Refreshing tsvector index ......... done (52ms)
+
+    shared_artifacts:
+      - name: embedding_model
+        source: "config / env: OPENAI_EMBEDDING_MODEL (e.g., text-embedding-3-small)"
+        displayed_as: "${embedding_model}"
+        consumers: ["enriched_questions.embedding column", "search-time embedding generation"]
+      - name: lexical_index_content
+        source: "Postgres tsvector generated column from title + content + keywords"
+        displayed_as: "${lexical_tsv}"
+        consumers: ["search query lexical leg"]
+
+    emotional_state:
+      entry: "engaged"
+      exit: "satisfied -- the data is queryable now"
+
+    integration_checkpoint: |
+      Embedding model is identical between ingestion-time and query-time.
+      If the embedding model changes, all rows must be re-embedded; document
+      this constraint clearly. Lexical index is automatic (Postgres-generated)
+      so it cannot drift.
+
+    failure_modes:
+      - "Embedding API fails for a subset -- those rows are flagged 'embedding_pending'; search-time can either skip them or fall back to lexical-only for those rows"
+      - "Vector dimension mismatch with column definition -- pipeline fails loud before write"
+
+    gherkin: |
+      Scenario: Successful embedding and indexing
+        Given 9 enriched records ready to embed
+        When the pipeline calls the embedding API and writes results
+        Then each row has a non-null embedding column with the expected vector dimension
+        And the pgvector index includes the new rows
+        And the lexical tsvector is up to date
+
+  - id: 4
+    name: "Run summary"
+    actor: pipeline
+    user_action: "Reads the summary and decides whether to investigate quarantine"
+
+    tui_mockup: |
+      ============================================
+      Run summary
+      ============================================
+      File:           data/sample-questions.json
+      Total:          10
+      Enriched:        9 (90.0%)
+      Quarantined:     1 (10.0%)  see: SELECT * FROM quarantine WHERE batch_id='2026-05-13T10:42:00Z'
+      Total cost:    $0.0764
+      Avg cost/q:    $0.0085
+      Duration:      14.2s
+      Prompt:        v1 (sha: 8af3c2)
+      Model:         gpt-4o-mini
+      Embedding:     text-embedding-3-small
+
+      Exit code: 0 (with quarantine warnings)
+
+    shared_artifacts:
+      - name: run_summary
+        source: "in-process pipeline aggregate, also written to logs/runs/{batch_id}.json"
+        displayed_as: "${summary}"
+        consumers: ["CLI stdout", "audit log file"]
+
+    emotional_state:
+      entry: "satisfied"
+      exit: "confident -- defensible to Finance, repeatable tomorrow"
+
+    integration_checkpoint: |
+      Summary numbers MUST match what is queryable in the DB.
+      "Enriched: 9" implies COUNT(*) FROM enriched_questions WHERE batch_id = ... returns 9.
+
+    failure_modes:
+      - "Summary count diverges from DB count -- a bug; surface as a loud post-check at the end of the run"
+
+    gherkin: |
+      Scenario: Sam reads the run summary
+        Given the ingestion completes
+        When the summary prints
+        Then it shows: total, enriched count, quarantined count, total cost, duration, prompt version, model, embedding model
+        And the enriched count equals COUNT(*) of enriched_questions for this batch_id
+        And the quarantined count equals COUNT(*) of quarantine for this batch_id
+
+integration_validation:
+  shared_artifact_consistency:
+    - artifact: prompt_version
+      must_match_across: [1, 2, 4]
+      failure_message: "Prompt version stamped on the row MUST equal the version reported in CLI summary"
+    - artifact: embedding_model
+      must_match_across: [3]
+      failure_message: "Embedding model used at ingestion MUST match the embedding model used at query time -- document in feature-delta.md"
+
+changelog:
+  - date: "2026-05-13"
+    feature: hybrid-search-medical-questions
+    change: "Initial journey: admin-ingests-batch (cautious -> alert -> confident arc)"
