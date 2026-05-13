@@ -24,7 +24,6 @@ let migrationApplied = false;
 function databaseUrl(): string {
   return (
     process.env.TEST_DATABASE_URL ??
-    process.env.DATABASE_URL ??
     "postgresql://netea:netea@localhost:5433/netea_test"
   );
 }

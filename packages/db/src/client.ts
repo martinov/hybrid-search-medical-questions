@@ -16,10 +16,21 @@ export type DrizzleClient = PostgresJsDatabase<typeof schema> & {
 let cached: { url: string; client: DrizzleClient } | null = null;
 
 function resolveDatabaseUrl(): string {
-  const url =
-    process.env.TEST_DATABASE_URL ??
-    process.env.DATABASE_URL ??
-    "postgresql://netea:netea@localhost:5433/netea_test";
+  // Tests run under NODE_ENV=test (vitest default) and target the isolated
+  // test database on :5433. Production paths (pnpm ingest, pnpm dev:api) set
+  // DATABASE_URL and must never silently fall through to the test DB even if
+  // TEST_DATABASE_URL is also present in .env.
+  const isTest = process.env.NODE_ENV === "test";
+  if (isTest) {
+    return (
+      process.env.TEST_DATABASE_URL ??
+      "postgresql://netea:netea@localhost:5433/netea_test"
+    );
+  }
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not set. See .env.example.");
+  }
   return url;
 }
 

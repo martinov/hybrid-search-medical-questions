@@ -70,7 +70,7 @@ function v3UsageFromTokens(inputTokens: number, outputTokens: number) {
       cacheRead: 0,
       cacheWrite: 0,
     },
-    outputTokens: { total: outputTokens, reasoning: 0 },
+    outputTokens: { total: outputTokens, text: outputTokens, reasoning: 0 },
     totalTokens: inputTokens + outputTokens,
   };
 }
@@ -242,8 +242,12 @@ describe("Given a clean local environment with Postgres and pgvector running via
 
   describe("And the OPENAI_API_KEY environment variable is not set", () => {
     it("When Sam runs the single-question ingestion command, then it exits with code 2 and the corpus stays empty", async () => {
-      const env = { ...process.env };
-      delete env.OPENAI_API_KEY;
+      // Set to empty string rather than deleting: the subprocess auto-loads
+      // .env via dotenvx, which re-injects OPENAI_API_KEY if the key is
+      // absent. An empty value defeats dotenvx's "skip if already set" check
+      // while still triggering the CLI's `if (!process.env.OPENAI_API_KEY)`
+      // fast-exit at apps/ingestion/src/cli.ts:83.
+      const env = { ...process.env, OPENAI_API_KEY: "" };
 
       const out = spawnSync(
         "pnpm",

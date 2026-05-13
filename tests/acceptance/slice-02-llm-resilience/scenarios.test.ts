@@ -54,7 +54,7 @@ type CallScript = Array<
 function v3UsageFromTokens(inputTokens: number, outputTokens: number) {
   return {
     inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: 0, cacheWrite: 0 },
-    outputTokens: { total: outputTokens, reasoning: 0 },
+    outputTokens: { total: outputTokens, text: outputTokens, reasoning: 0 },
     totalTokens: inputTokens + outputTokens,
   };
 }
