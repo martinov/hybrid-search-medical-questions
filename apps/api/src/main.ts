@@ -1,5 +1,7 @@
 // apps/api/src/main — Production composition root.
 
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { config as dotenvConfig } from "dotenv";
 import { migrate } from "@netea/db";
@@ -10,7 +12,7 @@ import {
 } from "@netea/enrichment";
 import { createApp } from "./app.js";
 
-dotenvConfig();
+dotenvConfig({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env") });
 
 async function main(): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
