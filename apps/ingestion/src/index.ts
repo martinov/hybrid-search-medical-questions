@@ -12,4 +12,5 @@ export type {
   IngestBatchResult,
   PerQuestionLogEntry,
   RunSummary,
+  DryRunEstimate,
 } from "./service.js";

@@ -50,6 +50,16 @@ export type AttemptHistoryEntry = {
   errorMessage: string;
 };
 
+// Slice 03: usage is the load-bearing shape for cost aggregation. The
+// service returns real token totals (summed across all schema-retry
+// attempts and the embedding call) so the ingestion service can price
+// them against the `@netea/observability` pricing table.
+export type EnrichmentUsage = {
+  enrichmentInputTokens: number;
+  enrichmentOutputTokens: number;
+  embeddingTokens: number;
+};
+
 export type EnrichmentOutcome =
   | {
       kind: "ok";
@@ -57,7 +67,7 @@ export type EnrichmentOutcome =
       retryCount: number; // schema retries only
       transportRetryCount: number;
       latencyMs: number;
-      costUsd: number;
+      usage: EnrichmentUsage;
       enrichment: EnrichmentOutput;
       embedding: number[];
       provenance: {
@@ -74,7 +84,7 @@ export type EnrichmentOutcome =
       questionId: string;
       failureKind: FailureKind;
       latencyMs: number;
-      costUsd: number;
+      usage: EnrichmentUsage;
       attemptHistory: AttemptHistoryEntry[];
       lastValidationError: unknown;
       lastFinishReason: string;
@@ -130,6 +140,12 @@ export class EnrichmentService {
     const attemptHistory: AttemptHistoryEntry[] = [];
     let feedback: string | undefined = undefined;
     let transportRetryCount = 0;
+    // Slice 03: token-level usage is accumulated across ALL schema-retry
+    // attempts (including the failed ones). The cost of a quarantine event
+    // is real: every attempt consumed tokens. The ingestion service prices
+    // these against the @netea/observability pricing table.
+    let enrichmentInputTokens = 0;
+    let enrichmentOutputTokens = 0;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const promptText = buildEnrichmentPrompt(raw, { feedback });
@@ -159,6 +175,8 @@ export class EnrichmentService {
       }
 
       const { rawText, finishReason } = invoke;
+      enrichmentInputTokens += invoke.usage.inputTokens;
+      enrichmentOutputTokens += invoke.usage.outputTokens;
       const { parsed, parseError } = tryParse(rawText);
       const kind = classifyFailure({ rawText, finishReason, parseError });
 
@@ -192,13 +210,18 @@ export class EnrichmentService {
           model: this._deps.embeddingModel,
           value: `${raw.title}\n${raw.content}`,
         });
+        const embeddingTokens = embedResult.usage?.tokens ?? 0;
         return {
           kind: "ok",
           questionId: ctx.questionId,
           retryCount: attempt - 1,
           transportRetryCount,
           latencyMs: Date.now() - start,
-          costUsd: 0,
+          usage: {
+            enrichmentInputTokens,
+            enrichmentOutputTokens,
+            embeddingTokens,
+          },
           enrichment: parsed,
           embedding: embedResult.embedding,
           provenance: {
@@ -218,7 +241,12 @@ export class EnrichmentService {
           questionId: ctx.questionId,
           failureKind: kind ?? "F2",
           latencyMs: Date.now() - start,
-          costUsd: 0,
+          usage: {
+            enrichmentInputTokens,
+            enrichmentOutputTokens,
+            // Quarantined rows are not embedded — no embedding tokens.
+            embeddingTokens: 0,
+          },
           attemptHistory,
           lastValidationError: serializeZodError(parseError),
           lastFinishReason: finishReason,
@@ -238,7 +266,11 @@ export class EnrichmentService {
       questionId: ctx.questionId,
       failureKind: last.failureKind ?? "F2",
       latencyMs: Date.now() - start,
-      costUsd: 0,
+      usage: {
+        enrichmentInputTokens,
+        enrichmentOutputTokens,
+        embeddingTokens: 0,
+      },
       attemptHistory,
       lastValidationError: null,
       lastFinishReason: last.finishReason,

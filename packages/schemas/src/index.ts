@@ -11,3 +11,4 @@ export * from "./search.js";
 export * from "./ingestion.js";
 export * from "./events.js";
 export * from "./config.js";
+export * from "./observability.js";
