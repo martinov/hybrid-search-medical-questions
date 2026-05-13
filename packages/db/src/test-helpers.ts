@@ -250,6 +250,50 @@ export async function seedDkaCorpusApplicationOnly(): Promise<void> {
   await insertSeedRows(rows);
 }
 
+/**
+ * Seed a Sjogren-neurological-complications corpus with exactly two questions.
+ * Used by Slice 06 (US-07) to verify that when the user opts into a
+ * reformulation, the agent's fresh search resolves both seeded items.
+ */
 export async function seedSjogrenNeurologicalCorpus(): Promise<void> {
-  throw new Error("seedSjogrenNeurologicalCorpus: not implemented (Slice 06 scope)");
+  const baseContent =
+    "A 47-year-old woman with longstanding Sjogren syndrome presents with " +
+    "progressive sensory ataxia and impaired proprioception. MRI of the " +
+    "cervical spine shows T2 hyperintensity in the dorsal columns consistent " +
+    "with Sjogren-related neurological complications.";
+  const rows: SeedRow[] = [
+    {
+      title: "Sjogren: Neurological Complications — Sensory Ganglionopathy",
+      content:
+        baseContent +
+        " Recognize sensory ganglionopathy as a hallmark neurological " +
+        "complication of Sjogren syndrome and identify its electrodiagnostic " +
+        "features.",
+      bloom_level: "application",
+      keywords: [
+        "Sjogren",
+        "neurological complications",
+        "sensory ganglionopathy",
+        "dorsal column",
+      ],
+      medical_specialty: "Neurology",
+    },
+    {
+      title: "Sjogren: Neurological Complications — Posterior Column Involvement",
+      content:
+        baseContent +
+        " Apply the diagnostic workup for posterior-column degeneration in a " +
+        "patient with Sjogren syndrome and distinguish it from B12 deficiency " +
+        "and tabes dorsalis.",
+      bloom_level: "analysis",
+      keywords: [
+        "Sjogren",
+        "neurological complications",
+        "posterior column",
+        "differential",
+      ],
+      medical_specialty: "Neurology",
+    },
+  ];
+  await insertSeedRows(rows);
 }

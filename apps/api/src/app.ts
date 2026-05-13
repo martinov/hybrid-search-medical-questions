@@ -22,6 +22,7 @@ import {
 } from "@netea/schemas";
 import { Hono } from "hono";
 import {
+  stepCountIs,
   streamText,
   tool,
   type EmbeddingModel,
@@ -29,6 +30,7 @@ import {
   type ModelMessage,
 } from "ai";
 import { z } from "zod";
+import { SYSTEM_PROMPT } from "./conversation/system-prompt.js";
 
 export type AppDeps = {
   enrichmentModel: LanguageModel;
@@ -189,46 +191,14 @@ export function createApp(deps: AppDeps): NeteaApp {
       // preserved as assistant messages in `messages`, so the model can read
       // back earlier search hits when resolving ordinal references like
       // "the second one" without re-issuing a search.
-      system:
-        "You are a medical-question discovery assistant for medical students. " +
-        "When the user asks about a clinical scenario or medical topic, call the " +
-        "`searchQuestions` tool with a concise clinical-intent query. Then summarize " +
-        "the results truthfully — reference each question by its exact title and " +
-        "include a content excerpt of at least 100 characters. NEVER invent titles " +
-        "or content. " +
-        "\n\nBloom-level intent extraction: when the user's wording signals a " +
-        "specific cognitive level, pass the corresponding `bloom_level` argument " +
-        "to `searchQuestions`. Mapping (PoC 3-level subset): " +
-        "  - 'recall' / 'memorize' / 'flashcard' / 'remember' / 'list' / 'name' -> bloom_level=recall\n" +
-        "  - 'apply' / 'application-level' / 'test my understanding' / 'use the concept' / 'clinical case' -> bloom_level=application\n" +
-        "  - 'analysis' / 'analyze' / 'complex reasoning' / 'differential diagnosis' / 'compare and contrast' -> bloom_level=analysis\n" +
-        "When the user explicitly says 'only X-level' or 'just analysis questions', " +
-        "ALWAYS pass the filter. " +
-        "\n\nResult-set policy: if `searchQuestions` returns `no_match`, say so " +
-        "honestly. If it returns `no_match_with_filter`, explicitly state that no " +
-        "questions matched the requested Bloom level — do NOT silently swap to a " +
-        "different level — and offer to broaden to an adjacent level instead. " +
-        "\n\nMulti-turn conversation handling (Slice 05): the full conversation " +
-        "history is included with every turn. Use the prior turns to interpret " +
-        "the current user message.\n" +
-        "  - Ordinal references ('the second one', 'the first result', 'the last " +
-        "one', 'open #3') -> read back the prior turn's result set from the " +
-        "conversation history and respond with that specific result. Do NOT " +
-        "call `searchQuestions` for an ordinal reference when prior results " +
-        "exist.\n" +
-        "  - Refinement of the prior set ('only application-level among those', " +
-        "'just the recall ones from before') -> filter the prior result set " +
-        "client-side in your reply. Do NOT call `searchQuestions` again.\n" +
-        "  - Topic shift ('what about X instead?', 'now show me Y', or any " +
-        "clearly different clinical topic from the prior turns) -> call " +
-        "`searchQuestions` with a fresh query reflecting the new topic. Do " +
-        "NOT reuse prior results from the previous topic.\n" +
-        "  - Out-of-range ordinal ('open the seventh one' when only 3 results " +
-        "exist, or no prior search exists at all) -> state honestly that no " +
-        "such result exists (e.g. 'only N results were returned' or 'I have " +
-        "not searched for that yet'). NEVER invent a question to fill the " +
-        "gap. If no prior search exists, offer to run one.",
+      system: SYSTEM_PROMPT,
       tools: { searchQuestions: searchQuestionsTool },
+      // Slice 06 / US-07: allow the agent to take up to 2 steps so that a
+      // tool-call (step 1) can be followed by a text-rendering step (step 2)
+      // that summarizes the tool result. The Zero-Result Policy bounds this
+      // explicitly: at most ONE reformulation per user turn. stepCountIs(2)
+      // enforces that bound at the runtime layer too.
+      stopWhen: stepCountIs(2),
       messages: modelMessages,
     });
 
