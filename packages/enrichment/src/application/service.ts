@@ -10,6 +10,7 @@
 
 import {
   EnrichmentOutputSchema,
+  EnrichmentOutputJsonSchema,
   type EnrichmentOutput,
   type FailureKind,
   type RawQuestion,
@@ -158,7 +159,14 @@ export class EnrichmentService {
         try {
           invoke = await invokeLanguageModelV3(
             this._deps.enrichmentModel as LanguageModel as unknown as Parameters<typeof invokeLanguageModelV3>[0],
-            { promptText, temperature },
+            {
+              promptText,
+              temperature,
+              responseSchema: {
+                schema: EnrichmentOutputJsonSchema,
+                name: "enrichment_output",
+              },
+            },
           );
           break;
         } catch (err) {

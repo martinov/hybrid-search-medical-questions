@@ -3,7 +3,7 @@
 // TODO step 1+: when Zod 4 is GA, swap `zod-to-json-schema` for native `z.toJSONSchema()`.
 
 import { z } from "zod";
-import { BloomLevel } from "./bloom.js";
+import { BloomLevel, BLOOM_LEVELS_POC } from "./bloom.js";
 
 export const __SCAFFOLD__ = true as const;
 
@@ -56,6 +56,26 @@ export const EnrichmentOutputSchema = z
   })
   .strict();
 export type EnrichmentOutput = z.infer<typeof EnrichmentOutputSchema>;
+
+// JSON Schema mirror of EnrichmentOutputSchema for OpenAI Structured Outputs.
+// Hand-maintained until Zod 4's z.toJSONSchema() lands (see file-top TODO).
+// `rationale` is intentionally omitted: it's Zod-optional, but OpenAI strict
+// mode forbids optional properties. With additionalProperties=false the model
+// cannot emit it anyway, and downstream Zod parse with .optional() is happy
+// with it being absent.
+export const EnrichmentOutputJsonSchema = {
+  type: "object",
+  properties: {
+    bloom_level: { type: "string", enum: [...BLOOM_LEVELS_POC] },
+    keywords: {
+      type: "array",
+      items: { type: "string" },
+    },
+    medical_specialty: { type: "string" },
+  },
+  required: ["bloom_level", "keywords", "medical_specialty"],
+  additionalProperties: false,
+} as const;
 
 // Provenance stamped on every persisted enriched row.
 export const ProvenanceSchema = z

@@ -51,6 +51,13 @@ export type InvokeLlmArgs = {
   maxOutputTokens?: number;
   /** Per-request abort after this many ms (default 60_000). */
   timeoutMs?: number;
+  /**
+   * When provided, enables OpenAI Structured Outputs: the model is forced to
+   * return JSON matching this schema (no `.optional()` fields allowed by
+   * OpenAI strict mode — use nullable or omit). Without this, the adapter
+   * falls back to plain JSON mode (raw JSON, no shape enforcement).
+   */
+  responseSchema?: { schema: unknown; name: string; description?: string };
 };
 
 export type InvokeLlmResult = {
@@ -92,10 +99,19 @@ export async function invokeLanguageModelV3(
     // 1024 is plenty for the structured enrichment JSON (~250 tokens).
     maxOutputTokens: args.maxOutputTokens ?? (reasoning ? 4096 : 1024),
     abortSignal: AbortSignal.timeout(args.timeoutMs ?? 60_000),
-    // OpenAI JSON mode: forces raw JSON output (no ```json fences).
-    // Schema is not enforced here — downstream Zod parse still validates
-    // shape; this only fixes the markdown-wrapping problem.
-    responseFormat: { type: "json" },
+    // With responseSchema: OpenAI Structured Outputs — the model is forced
+    // to return JSON matching the schema (eliminates both fence-wrapping
+    // and schema-mismatch failure modes).
+    // Without: plain JSON mode (raw JSON, no shape enforcement; downstream
+    // Zod parse still validates shape).
+    responseFormat: args.responseSchema
+      ? {
+          type: "json",
+          schema: args.responseSchema.schema as Record<string, unknown>,
+          name: args.responseSchema.name,
+          description: args.responseSchema.description,
+        }
+      : { type: "json" },
     ...(reasoning
       ? { providerOptions: { openai: { reasoningEffort: "minimal" } } }
       : {}),
