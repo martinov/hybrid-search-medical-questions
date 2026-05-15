@@ -3,34 +3,35 @@
 // Returns a Hono app extended with a `.deps` accessor so tests can read back
 // the wired-in models (acceptance tests do `app.deps.enrichmentModel`).
 //
-// AI SDK 6 notes:
-//   - `useChat` (client) defaults to the Data Stream Protocol; for the
-//     walking skeleton the server returns a plain SSE-ish text stream that
-//     the test asserts via `await res.text()`. We use `streamText` and
-//     return its UI message stream via `toUIMessageStreamResponse()` so the
-//     content includes the rendered tokens.
-//   - Per ENRICH-DELIVER-01 we bypass `@mastra/core` entirely at runtime
-//     because of the Zod-4 peer-dep mismatch; we keep Mastra installed.
+// Chat path uses `@mastra/core` Agent — the framework named by the brief is
+// load-bearing. Mastra@1.33 peer-supports Zod 4 (`^3.25.0 || ^4.0.0`); the
+// earlier DLV-5 reasoning about a Zod-4 peer-mismatch was stale (mastra's
+// `@ai-sdk/ui-utils-v5` is a npm-aliased internal dependency, not a peer).
+// Agent.stream() output is piped through `@mastra/ai-sdk`'s `toAISdkStream`
+// + AI SDK's `createUIMessageStream*` so `useChat` on the client renders the
+// same UI message stream protocol it always did.
 
 import { getDb } from "@netea/db";
 import { hybridSearch } from "@netea/search";
 import {
   SearchQuerySchema,
-  BloomLevel,
   BLOOM_LEVELS_POC,
   type SearchQuery,
 } from "@netea/schemas";
 import { Hono } from "hono";
+import { Agent } from "@mastra/core/agent";
+import { toAISdkStream } from "@mastra/ai-sdk";
 import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   stepCountIs,
-  streamText,
-  tool,
   type EmbeddingModel,
   type LanguageModel,
   type ModelMessage,
 } from "ai";
 import { z } from "zod";
 import { SYSTEM_PROMPT } from "./conversation/system-prompt.js";
+import { makeSearchQuestionsTool } from "./conversation/tools/search-questions.js";
 
 export type AppDeps = {
   enrichmentModel: LanguageModel;
@@ -138,37 +139,21 @@ export function createApp(deps: AppDeps): NeteaApp {
     return c.json(result, 200);
   });
 
-  // searchQuestions tool used by the chat agent.
-  // bloom_level is exposed so the model can pass an explicit cognitive-level
-  // filter when the user's natural-language intent signals one
-  // (e.g. "test my understanding" -> application; "let me memorize" -> recall;
-  // "complex reasoning" -> analysis). See the system prompt below.
-  const searchQuestionsTool = tool({
-    description:
-      "Search the medical question bank for questions matching a clinical query. " +
-      "Returns up to 5 questions with title, content, and bloom level. " +
-      "Pass an optional bloom_level (recall|application|analysis) when the user " +
-      "asks for a specific cognitive level. Returns no_match (or no_match_with_filter) " +
-      "if nothing relevant exists — do NOT invent titles.",
-    inputSchema: z.object({
-      query: z.string().min(1).describe("Clinical-intent query phrased in natural language"),
-      limit: z.number().int().min(1).max(10).default(5),
-      bloom_level: BloomLevel.optional().describe(
-        "Optional Bloom cognitive level filter. Use only when the user's " +
-          "intent is clearly bound to one level.",
-      ),
-    }),
-    execute: async (input) => {
-      const result = await hybridSearch(
-        {
-          query: input.query,
-          limit: input.limit ?? 5,
-          ...(input.bloom_level ? { bloom_level: input.bloom_level } : {}),
-        } as SearchQuery,
-        { embeddingModel: deps.embeddingModel },
-      );
-      return result;
-    },
+  // Chat agent: framework-aligned (Mastra) per brief. The tool factory closes
+  // over `deps.embeddingModel` so the search adapter has what it needs without
+  // a wider runtime context.
+  const searchQuestionsTool = makeSearchQuestionsTool({
+    embeddingModel: deps.embeddingModel,
+  });
+
+  const chatAgent = new Agent({
+    id: "medical-question-search",
+    name: "medical-question-search",
+    instructions: SYSTEM_PROMPT,
+    // `deps.chatModel` is an AI SDK LanguageModel (real or `MockLanguageModelV3`
+    // in acceptance tests). Mastra accepts AI SDK language models directly.
+    model: deps.chatModel as never,
+    tools: { searchQuestions: searchQuestionsTool },
   });
 
   app.post("/api/chat", async (c) => {
@@ -182,27 +167,30 @@ export function createApp(deps: AppDeps): NeteaApp {
     }
     const modelMessages = uiOrLegacyMessagesToModelMessages(parsed.data.messages);
 
-    const result = streamText({
-      model: deps.chatModel,
-      // Multi-turn note (Slice 05 / US-06): conversation history is carried
-      // client-side by Vercel AI SDK `useChat` and arrives here as the full
-      // `messages` array. The agent itself is stateless on the server — every
-      // request sees the entire history. Tool-results from prior turns are
-      // preserved as assistant messages in `messages`, so the model can read
-      // back earlier search hits when resolving ordinal references like
-      // "the second one" without re-issuing a search.
-      system: SYSTEM_PROMPT,
-      tools: { searchQuestions: searchQuestionsTool },
-      // Slice 06 / US-07: allow the agent to take up to 2 steps so that a
-      // tool-call (step 1) can be followed by a text-rendering step (step 2)
-      // that summarizes the tool result. The Zero-Result Policy bounds this
-      // explicitly: at most ONE reformulation per user turn. stepCountIs(2)
-      // enforces that bound at the runtime layer too.
+    // Slice 06 / US-07: cap at 2 steps so a tool-call (step 1) can be followed
+    // by a text-rendering step (step 2). The Zero-Result Policy bounds
+    // reformulations to at most one per user turn; `stopWhen: stepCountIs(2)`
+    // enforces that at the runtime layer.
+    const mastraStream = await chatAgent.stream(modelMessages, {
       stopWhen: stepCountIs(2),
-      messages: modelMessages,
     });
 
-    return result.toUIMessageStreamResponse();
+    const uiMessageStream = createUIMessageStream({
+      originalMessages: parsed.data.messages as never,
+      execute: async ({ writer }) => {
+        // `@mastra/ai-sdk@1.4.x` is typed against AI SDK v5 chunk shapes; the
+        // project uses AI SDK v6. The wire protocol is compatible (`finish`
+        // chunk drops the v5-only `"unknown"` finishReason at runtime); we
+        // cast to keep the type-checker happy.
+        for await (const part of toAISdkStream(mastraStream as never, {
+          from: "agent",
+        })) {
+          await writer.write(part as never);
+        }
+      },
+    });
+
+    return createUIMessageStreamResponse({ stream: uiMessageStream });
   });
 
   return app;

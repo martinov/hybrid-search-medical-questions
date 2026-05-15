@@ -1,35 +1,50 @@
-// apps/api/src/conversation/tools/search-questions — Tool exposed to the
-// Mastra agent (or AI SDK `streamText` fallback per ENRICH-DELIVER-01).
+// apps/api/src/conversation/tools/search-questions — Mastra tool for the
+// chat Agent. Owns the conversation -> hybrid-search adapter.
 
+import { createTool } from "@mastra/core/tools";
+import { hybridSearch } from "@netea/search";
+import { BloomLevel, type SearchQuery } from "@netea/schemas";
 import { z } from "zod";
-import { BloomLevel } from "@netea/schemas";
+import type { EmbeddingModel } from "ai";
 
-export const __SCAFFOLD__ = true as const;
+export type SearchQuestionsDeps = {
+  embeddingModel: EmbeddingModel;
+};
 
-export const searchQuestionsTool = {
-  id: "search_questions" as const,
-  description:
-    "Search the medical question corpus by clinical-intent text. Returns up to " +
-    "`limit` results ranked by hybrid (lexical + semantic) relevance. " +
-    "Pass `bloom_level` (recall|application|analysis) to restrict to a single " +
-    "cognitive level when the user's wording signals one (e.g. 'memorize' -> " +
-    "recall, 'test my understanding' -> application, 'complex reasoning' -> " +
-    "analysis). Returns kind:'no_match' if zero results, or " +
-    "kind:'no_match' with reason:'no_match_with_filter' when a filter " +
-    "eliminated all candidates.",
-  inputSchema: z
-    .object({
-      query: z.string().min(1).max(500),
-      limit: z.number().int().min(1).max(20).default(5),
-      bloom_level: BloomLevel.optional(),
-    })
-    .strict(),
-  // The runtime tool wiring lives in `apps/api/src/app.ts` per
-  // ENRICH-DELIVER-01 (Mastra/Zod-4 peer-dep workaround). This module is the
-  // shape-only declaration for future Mastra adoption.
-  execute: async (_input: unknown) => {
-    throw new Error(
-      "searchQuestionsTool.execute: not wired here — see apps/api/src/app.ts",
-    );
-  },
-} as const;
+export function makeSearchQuestionsTool(deps: SearchQuestionsDeps) {
+  return createTool({
+    id: "searchQuestions",
+    description:
+      "Search the medical question bank for questions matching a clinical query. " +
+      "Returns up to 5 questions with title, content, and bloom level. " +
+      "Pass an optional bloom_level (recall|application|analysis) when the user " +
+      "asks for a specific cognitive level. Returns no_match (or no_match_with_filter) " +
+      "if nothing relevant exists — do NOT invent titles.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(1)
+        .describe("Clinical-intent query phrased in natural language"),
+      limit: z.number().int().min(1).max(10).default(5),
+      bloom_level: BloomLevel.optional().describe(
+        "Optional Bloom cognitive level filter. Use only when the user's " +
+          "intent is clearly bound to one level.",
+      ),
+    }),
+    execute: async (input) => {
+      const args = input as {
+        query: string;
+        limit?: number;
+        bloom_level?: "recall" | "application" | "analysis";
+      };
+      return hybridSearch(
+        {
+          query: args.query,
+          limit: args.limit ?? 5,
+          ...(args.bloom_level ? { bloom_level: args.bloom_level } : {}),
+        } as SearchQuery,
+        { embeddingModel: deps.embeddingModel },
+      );
+    },
+  });
+}
