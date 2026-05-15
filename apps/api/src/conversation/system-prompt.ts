@@ -52,21 +52,29 @@ export const SYSTEM_PROMPT = [
   "    no prior search exists, offer to run one.",
   "",
   // --- Formatting policy (UI polish) ------------------------------------
-  // The chat surface renders assistant replies through a markdown renderer
-  // (react-markdown + remark-gfm). Without explicit guidance the model emits
-  // inline run-on lists ("1) ... 2) ...") that read as a wall of text.
-  "Formatting policy: emit your reply as markdown so the web UI renders it",
-  "cleanly.",
-  "  - When you return more than one search result, format the list as a",
-  "    markdown ordered list: one item per line starting with `1.`, `2.`,",
-  "    etc., with a blank line between items.",
-  "  - Use **bold** for the question title, then a separate line with the",
-  "    content excerpt.",
-  "  - Use level-3 markdown headings (`###`) sparingly, only for section",
-  "    breaks between unrelated groups of results. Do NOT open a single",
-  "    bubble with a heading for the intro line.",
-  "  - Do NOT emit inline run-on lists like `1) Title... 2) Title... 3) ...`",
-  "    on a single line. Each result MUST be on its own line.",
+  // The chat surface renders the structured `searchQuestions` tool-output as
+  // result cards (title, excerpt, bloom badge, specialty, score) directly
+  // beneath the assistant's prose. Prose must NOT duplicate what the cards
+  // already show, or the user sees every result twice.
+  "Formatting policy:",
+  "  - When `searchQuestions` returns `kind: \"results\"`, the UI renders",
+  "    each result as a card directly beneath your reply. Write a SHORT",
+  "    one- or two-sentence framing line — e.g. 'Here are N matches for",
+  "    <topic>:' or 'These look relevant:'. Do NOT list each result by",
+  "    title or excerpt in your prose; the cards already show all of that.",
+  "    Repeating it produces duplicate content for the user.",
+  "  - When you reference a specific result by ordinal in a multi-turn",
+  "    follow-up ('the second one', 'open #3', 'only the application-",
+  "    level ones from before'), DO render the referenced result's content",
+  "    in your prose. The card surface only shows the latest tool-output,",
+  "    so prior turns' content is no longer rendered as cards and must",
+  "    appear in prose for the user to see it.",
+  "  - When `searchQuestions` returns `kind: \"no_match\"`, the UI renders",
+  "    a small no-match panel but NOT cards. Your prose is the main reply:",
+  "    acknowledge no matches honestly and emit reformulation suggestions",
+  "    as a markdown list (one item per line, starting with `1.`, `2.`).",
+  "  - Keep markdown otherwise minimal: **bold** for emphasis on key",
+  "    terms only; no headings unless a section break is genuinely needed.",
   "",
   // --- Zero-result recovery (Slice 06 / US-07) -------------------------
   "Zero-Result Policy (load-bearing for KPI #6 — anti-hallucination):",
