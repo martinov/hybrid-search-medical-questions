@@ -3,9 +3,14 @@
 // prose so the bloom-level signal, specialty, and score are legible at a
 // glance instead of buried in LLM-formatted markdown.
 
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 
 export type BloomLevel = "recall" | "application" | "analysis";
+
+export type SearchAnswer = {
+  content: string;
+  is_correct: boolean;
+};
 
 export type SearchResultItem = {
   id: string;
@@ -14,6 +19,8 @@ export type SearchResultItem = {
   bloom_level: BloomLevel;
   medical_specialty: string;
   score: number;
+  answers: SearchAnswer[];
+  explanation: string;
 };
 
 export type SearchResultsOutput = {
@@ -71,16 +78,26 @@ function clipExcerpt(content: string, max = 220): string {
   return `${lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut}…`;
 }
 
+export type RevealState = "collapsed" | "options" | "solution";
+
+const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
+
 export function ResultCard({
   ordinal,
   result,
+  initialRevealState = "collapsed",
 }: {
   ordinal: number;
   result: SearchResultItem;
+  initialRevealState?: RevealState;
 }): ReactElement {
+  const [revealState, setRevealState] = useState<RevealState>(initialRevealState);
+  const answersId = `answers-${result.id}`;
+
   return (
     <article
       data-testid="result-card"
+      data-reveal-state={revealState}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -140,17 +157,231 @@ export function ResultCard({
       >
         <BloomBadge level={result.bloom_level} />
         <span data-testid="result-card-specialty">{result.medical_specialty}</span>
-        <span
-          aria-hidden
-          style={{ color: "#d1d5db" }}
-        >
+        <span aria-hidden style={{ color: "#d1d5db" }}>
           •
         </span>
         <span title="Hybrid relevance score" style={{ fontVariantNumeric: "tabular-nums" }}>
           score {result.score.toFixed(2)}
         </span>
       </footer>
+
+      <RevealControls
+        revealState={revealState}
+        onChange={setRevealState}
+        answersId={answersId}
+      />
+
+      {revealState !== "collapsed" ? (
+        <AnswersPanel
+          id={answersId}
+          answers={result.answers}
+          explanation={result.explanation}
+          showSolution={revealState === "solution"}
+        />
+      ) : null}
     </article>
+  );
+}
+
+function RevealControls({
+  revealState,
+  onChange,
+  answersId,
+}: {
+  revealState: RevealState;
+  onChange: (next: RevealState) => void;
+  answersId: string;
+}): ReactElement {
+  const buttonBaseStyle = {
+    padding: "0.35rem 0.8rem",
+    fontSize: "0.82rem",
+    fontWeight: 500,
+    borderRadius: 6,
+    cursor: "pointer",
+    border: "1px solid transparent",
+  } as const;
+
+  if (revealState === "collapsed") {
+    return (
+      <div style={{ marginTop: "0.2rem" }}>
+        <button
+          type="button"
+          data-testid="reveal-options-button"
+          aria-expanded={false}
+          aria-controls={answersId}
+          onClick={() => onChange("options")}
+          style={{
+            ...buttonBaseStyle,
+            color: "#1e3a8a",
+            background: "#eff6ff",
+            borderColor: "#bfdbfe",
+          }}
+        >
+          Show answer options
+        </button>
+      </div>
+    );
+  }
+
+  if (revealState === "options") {
+    return (
+      <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          data-testid="reveal-solution-button"
+          aria-expanded={false}
+          aria-controls={answersId}
+          onClick={() => onChange("solution")}
+          style={{
+            ...buttonBaseStyle,
+            color: "#fff",
+            background: "#2563eb",
+          }}
+        >
+          Reveal correct answer
+        </button>
+        <button
+          type="button"
+          data-testid="hide-reveal-button"
+          aria-expanded={true}
+          aria-controls={answersId}
+          onClick={() => onChange("collapsed")}
+          style={{
+            ...buttonBaseStyle,
+            color: "#374151",
+            background: "transparent",
+            borderColor: "#e5e7eb",
+          }}
+        >
+          Hide
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: "0.2rem" }}>
+      <button
+        type="button"
+        data-testid="hide-reveal-button"
+        aria-expanded={true}
+        aria-controls={answersId}
+        onClick={() => onChange("collapsed")}
+        style={{
+          ...buttonBaseStyle,
+          color: "#374151",
+          background: "transparent",
+          borderColor: "#e5e7eb",
+        }}
+      >
+        Hide
+      </button>
+    </div>
+  );
+}
+
+function AnswersPanel({
+  id,
+  answers,
+  explanation,
+  showSolution,
+}: {
+  id: string;
+  answers: SearchAnswer[];
+  explanation: string;
+  showSolution: boolean;
+}): ReactElement {
+  return (
+    <div
+      id={id}
+      data-testid="answers-panel"
+      data-show-solution={showSolution}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+        marginTop: "0.4rem",
+        padding: "0.7rem 0.85rem",
+        background: "#fafafa",
+        border: "1px solid #ececec",
+        borderRadius: 8,
+      }}
+    >
+      <ol
+        style={{
+          margin: 0,
+          paddingLeft: 0,
+          listStyle: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.3rem",
+        }}
+      >
+        {answers.map((a, i) => {
+          const letter = OPTION_LETTERS[i] ?? String(i + 1);
+          const isCorrect = a.is_correct;
+          const showCorrect = showSolution && isCorrect;
+          return (
+            <li
+              key={i}
+              data-testid="answer-option"
+              data-correct={showCorrect ? "true" : "false"}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.55rem",
+                padding: "0.4rem 0.55rem",
+                borderRadius: 6,
+                fontSize: "0.92rem",
+                color: showCorrect ? "#065f46" : "#374151",
+                background: showCorrect ? "#ecfdf5" : "transparent",
+                border: showCorrect ? "1px solid #a7f3d0" : "1px solid transparent",
+                fontWeight: showCorrect ? 600 : 400,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  fontWeight: 600,
+                  color: showCorrect ? "#065f46" : "#6b7280",
+                  minWidth: "1.4rem",
+                }}
+              >
+                {letter}.
+              </span>
+              <span style={{ flex: 1 }}>{a.content}</span>
+              {showCorrect ? (
+                <span
+                  aria-label="correct answer"
+                  data-testid="correct-marker"
+                  style={{ color: "#059669", fontWeight: 700 }}
+                >
+                  ✓
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+      {showSolution ? (
+        <div
+          data-testid="answer-explanation"
+          style={{
+            marginTop: "0.3rem",
+            paddingTop: "0.55rem",
+            borderTop: "1px solid #e5e7eb",
+            color: "#374151",
+            fontSize: "0.9rem",
+            lineHeight: 1.55,
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: "0.2rem", color: "#111827" }}>
+            Explanation
+          </strong>
+          {explanation}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

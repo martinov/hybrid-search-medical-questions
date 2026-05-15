@@ -5,7 +5,12 @@
 
 import { getDb } from "@netea/db";
 import { embed } from "ai";
-import type { SearchQuery, SearchResult, SearchResultItem } from "@netea/schemas";
+import type {
+  SearchAnswer,
+  SearchQuery,
+  SearchResult,
+  SearchResultItem,
+} from "@netea/schemas";
 import { rrf, type FusedHit } from "../domain/rrf.js";
 import { LexicalSearchAdapter } from "../infrastructure/pg-lexical.js";
 import { SemanticSearchAdapter } from "../infrastructure/pg-semantic.js";
@@ -29,6 +34,9 @@ type EnrichedRowLite = {
   content: string;
   bloom_level: string;
   medical_specialty: string;
+  // `answers` is stored as JSONB; the postgres driver decodes it to JS.
+  answers: SearchAnswer[];
+  explanation: string;
 };
 
 async function loadHydration(ids: string[]): Promise<Map<string, EnrichedRowLite>> {
@@ -37,7 +45,7 @@ async function loadHydration(ids: string[]): Promise<Map<string, EnrichedRowLite
   const idsLiteral =
     "{" + ids.map((id) => `"${id}"`).join(",") + "}";
   const rows = await db.$client<EnrichedRowLite[]>`
-    SELECT id, title, content, bloom_level, medical_specialty
+    SELECT id, title, content, bloom_level, medical_specialty, answers, explanation
     FROM enriched_questions
     WHERE id = ANY(${idsLiteral}::uuid[])
   `;
@@ -116,6 +124,8 @@ export async function hybridSearch(
       bloom_level: row.bloom_level as SearchResultItem["bloom_level"],
       medical_specialty: row.medical_specialty,
       score: fusedHit.score,
+      answers: row.answers,
+      explanation: row.explanation,
     });
   }
 

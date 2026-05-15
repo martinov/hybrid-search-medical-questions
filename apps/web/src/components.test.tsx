@@ -23,6 +23,14 @@ const SAMPLE_RESULT: SearchResultItem = {
   bloom_level: "application",
   medical_specialty: "Cardiology",
   score: 0.87,
+  answers: [
+    { content: "Acute decompensated heart failure", is_correct: true },
+    { content: "Pulmonary embolism", is_correct: false },
+    { content: "Pneumonia with sepsis", is_correct: false },
+  ],
+  explanation:
+    "Elevated JVP plus bilateral leg swelling with progressive dyspnea on a hypertensive diabetic " +
+    "patient is the classic presentation of acute decompensated heart failure.",
 };
 
 describe("BloomBadge", () => {
@@ -65,6 +73,53 @@ describe("ResultCard", () => {
     );
     expect(html).toContain("…");
   });
+
+  it("defaults to the collapsed reveal state with neither options nor explanation visible", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard ordinal={1} result={SAMPLE_RESULT} />,
+    );
+    expect(html).toContain('data-reveal-state="collapsed"');
+    expect(html).toContain('data-testid="reveal-options-button"');
+    // Answer choices and explanation should not be in the DOM at all yet.
+    expect(html).not.toContain("Acute decompensated heart failure");
+    expect(html).not.toContain("Elevated JVP plus");
+  });
+
+  it("renders all answer choices without a correctness marker in the options state", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard
+        ordinal={1}
+        result={SAMPLE_RESULT}
+        initialRevealState="options"
+      />,
+    );
+    expect(html).toContain('data-reveal-state="options"');
+    expect(html).toContain("Acute decompensated heart failure");
+    expect(html).toContain("Pulmonary embolism");
+    // No correct-answer marker yet — the student is meant to attempt first.
+    expect(html).not.toContain('data-testid="correct-marker"');
+    expect(html).not.toContain("Elevated JVP plus");
+    // The next-step button is the solution-reveal action.
+    expect(html).toContain('data-testid="reveal-solution-button"');
+  });
+
+  it("marks the correct answer and shows the explanation in the solution state", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard
+        ordinal={1}
+        result={SAMPLE_RESULT}
+        initialRevealState="solution"
+      />,
+    );
+    expect(html).toContain('data-reveal-state="solution"');
+    expect(html).toContain('data-testid="correct-marker"');
+    // The correct answer is the one with the `data-correct="true"` flag.
+    expect(html).toMatch(
+      /data-correct="true"[\s\S]*Acute decompensated heart failure/,
+    );
+    expect(html).toContain("Elevated JVP plus");
+    expect(html).toContain("Explanation");
+  });
 });
 
 describe("ResultsList", () => {
@@ -75,7 +130,11 @@ describe("ResultsList", () => {
           kind: "results",
           results: [
             SAMPLE_RESULT,
-            { ...SAMPLE_RESULT, id: "22222222-2222-4222-8222-222222222222", title: "Pulmonology: Asthma" },
+            {
+              ...SAMPLE_RESULT,
+              id: "22222222-2222-4222-8222-222222222222",
+              title: "Pulmonology: Asthma",
+            },
           ],
           total: 2,
         }}
