@@ -21,7 +21,7 @@ export default defineConfig({
     include: [
       "tests/acceptance/**/*.test.ts",
       "packages/**/src/**/*.test.ts",
-      "apps/**/src/**/*.test.ts",
+      "apps/**/src/**/*.test.{ts,tsx}",
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
     testTimeout: 30_000,
