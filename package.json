@@ -26,7 +26,7 @@
     "ingest": "tsx apps/ingestion/src/cli.ts ingest --file data/sample-questions.json",
     "dev:api": "pnpm --filter @netea/api run dev",
     "dev:web": "pnpm --filter @netea/web run dev",
-    "dev": "turbo run dev --parallel"
+    "dev": "turbo run dev"
   },
   "devDependencies": {
     "@netea/api": "workspace:*",
@@ -43,7 +43,7 @@
     "ai": "^6.0.0",
     "eslint": "^9.18.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.9.0",
+    "turbo": "^2.9.14",
     "typescript": "^6.0.0",
     "vitest": "^2.1.0",
     "zod": "^4.4.0"
