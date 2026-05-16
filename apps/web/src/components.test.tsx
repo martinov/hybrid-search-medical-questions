@@ -52,7 +52,7 @@ describe("BloomBadge", () => {
 });
 
 describe("ResultCard", () => {
-  it("renders the title, ordinal, bloom badge, and specialty", () => {
+  it("renders the title, ordinal, bloom badge, specialty, and answer options inline", () => {
     const html = renderToStaticMarkup(
       <ResultCard ordinal={2} result={SAMPLE_RESULT} />,
     );
@@ -61,6 +61,12 @@ describe("ResultCard", () => {
     expect(html).toContain('data-level="application"');
     expect(html).toContain("Cardiology");
     expect(html).toContain("score 0.87");
+    // Options must be visible by default — no 'Show options' click required.
+    expect(html).toContain("Acute decompensated heart failure");
+    expect(html).toContain("Pulmonary embolism");
+    expect(html).toMatch(
+      /<button[^>]*data-testid="answer-option"[\s\S]*Acute decompensated heart failure/,
+    );
   });
 
   it("clips long content to an excerpt", () => {
@@ -74,70 +80,22 @@ describe("ResultCard", () => {
     expect(html).toContain("…");
   });
 
-  it("defaults to the collapsed reveal state with neither options nor explanation visible", () => {
+  it("hides feedback and explanation until the student has picked an answer", () => {
     const html = renderToStaticMarkup(
       <ResultCard ordinal={1} result={SAMPLE_RESULT} />,
     );
-    expect(html).toContain('data-reveal-state="collapsed"');
-    expect(html).toContain('data-testid="reveal-options-button"');
-    // Answer choices and explanation should not be in the DOM at all yet.
-    expect(html).not.toContain("Acute decompensated heart failure");
-    expect(html).not.toContain("Elevated JVP plus");
-    // Un-answered card → first-attempt button label.
-    expect(html).toContain("Show answer options");
-  });
-
-  it("when collapsed after an answer was picked, the expand button label changes and the pick persists", () => {
-    // Sticky-answered guard: a card that was answered and then hidden must
-    // not let the student round-trip Hide -> Show to retry the question.
-    // The pickedIndex stays on, and the button label signals 'review' not
-    // 'pick'.
-    const html = renderToStaticMarkup(
-      <ResultCard
-        ordinal={1}
-        result={SAMPLE_RESULT}
-        initialRevealState="collapsed"
-        initialPickedIndex={1}
-      />,
-    );
-    expect(html).toContain('data-reveal-state="collapsed"');
-    expect(html).toContain("Show answer");
-    expect(html).not.toContain("Show answer options");
-  });
-
-  it("renders answer choices as clickable buttons in the options state", () => {
-    const html = renderToStaticMarkup(
-      <ResultCard
-        ordinal={1}
-        result={SAMPLE_RESULT}
-        initialRevealState="options"
-      />,
-    );
-    expect(html).toContain('data-reveal-state="options"');
-    expect(html).toContain("Acute decompensated heart failure");
-    expect(html).toContain("Pulmonary embolism");
-    expect(html).toMatch(
-      /<button[^>]*data-testid="answer-option"[\s\S]*Acute decompensated heart failure/,
-    );
-    // No correctness signal yet — the student is meant to attempt first.
+    expect(html).toContain('data-answered="false"');
     expect(html).not.toContain('data-testid="correct-marker"');
     expect(html).not.toContain('data-testid="incorrect-marker"');
-    expect(html).not.toContain('data-testid="feedback-banner"');
+    expect(html).not.toContain('data-testid="answer-feedback"');
     expect(html).not.toContain("Elevated JVP plus");
-    // A "pick the answer" prompt should be visible.
-    expect(html).toContain('data-testid="answers-prompt"');
   });
 
   it("gives positive feedback when the student picks the correct answer", () => {
     const html = renderToStaticMarkup(
-      <ResultCard
-        ordinal={1}
-        result={SAMPLE_RESULT}
-        initialRevealState="answered"
-        initialPickedIndex={0}
-      />,
+      <ResultCard ordinal={1} result={SAMPLE_RESULT} initialPickedIndex={0} />,
     );
-    expect(html).toContain('data-reveal-state="answered"');
+    expect(html).toContain('data-answered="true"');
     expect(html).toContain('data-result="correct"');
     expect(html).toContain('data-testid="correct-marker"');
     // The picked option is the correct one — no incorrect marker should render.
@@ -147,21 +105,11 @@ describe("ResultCard", () => {
     );
     expect(html).toContain("Explanation");
     expect(html).toContain("Elevated JVP plus");
-    // Once the answer is revealed there is no "Try again" — retrying is
-    // pointless theater after the green option is visible. The student
-    // collapses and re-expands to attempt a fresh question.
-    expect(html).not.toContain('data-testid="try-again-button"');
-    expect(html).toContain('data-testid="hide-reveal-button"');
   });
 
   it("highlights both the student's wrong pick and the correct answer when the pick is wrong", () => {
     const html = renderToStaticMarkup(
-      <ResultCard
-        ordinal={1}
-        result={SAMPLE_RESULT}
-        initialRevealState="answered"
-        initialPickedIndex={1}
-      />,
+      <ResultCard ordinal={1} result={SAMPLE_RESULT} initialPickedIndex={1} />,
     );
     expect(html).toContain('data-result="incorrect"');
     expect(html).toContain('data-testid="incorrect-marker"');
@@ -175,6 +123,17 @@ describe("ResultCard", () => {
       /data-role="correct"[\s\S]*Acute decompensated heart failure/,
     );
     expect(html).toContain("Explanation");
+  });
+
+  it("renders options as static (non-button) rows after answering — answered state is sticky", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard ordinal={1} result={SAMPLE_RESULT} initialPickedIndex={0} />,
+    );
+    // None of the answer-option testids should be on a <button> once
+    // picked — re-clicking to retry the same question is theater.
+    expect(html).not.toMatch(
+      /<button[^>]*data-testid="answer-option"/,
+    );
   });
 });
 

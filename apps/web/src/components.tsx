@@ -78,50 +78,33 @@ function clipExcerpt(content: string, max = 220): string {
   return `${lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut}…`;
 }
 
-export type RevealState = "collapsed" | "options" | "answered";
-
 const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
 
 export function ResultCard({
   ordinal,
   result,
-  initialRevealState = "collapsed",
   initialPickedIndex = null,
 }: {
   ordinal: number;
   result: SearchResultItem;
-  initialRevealState?: RevealState;
   initialPickedIndex?: number | null;
 }): ReactElement {
-  const [revealState, setRevealState] = useState<RevealState>(initialRevealState);
+  // The card has one state bit: which answer (if any) the student picked.
+  // Options are always visible inline with the question — splitting them
+  // behind a 'Show answer options' click was friction. Once a pick is made
+  // it's sticky for the session (no re-attempt path; the student already
+  // knows the answer).
   const [pickedIndex, setPickedIndex] = useState<number | null>(initialPickedIndex);
-  const answersId = `answers-${result.id}`;
-  const hasAnswered = pickedIndex !== null;
-
-  // Once a card has been answered the result is sticky for this session:
-  // collapsing only hides the UI, it does NOT clear the pick, and re-expanding
-  // brings back the answered state (pick + feedback + explanation). Letting
-  // the student round-trip through Hide -> Show to retry would be theater —
-  // they already know which option is correct.
-  const expand = (): void => {
-    setRevealState(hasAnswered ? "answered" : "options");
-  };
-  const pickAnswer = (index: number): void => {
-    setPickedIndex(index);
-    setRevealState("answered");
-  };
-  const collapse = (): void => {
-    setRevealState("collapsed");
-  };
+  const answered = pickedIndex !== null;
 
   return (
     <article
       data-testid="result-card"
-      data-reveal-state={revealState}
+      data-answered={answered ? "true" : "false"}
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "0.5rem",
+        gap: "0.6rem",
         padding: "0.9rem 1rem",
         background: "#fff",
         border: "1px solid #e5e7eb",
@@ -155,6 +138,7 @@ export function ResultCard({
           {result.title}
         </h3>
       </header>
+
       <p
         style={{
           margin: 0,
@@ -165,6 +149,21 @@ export function ResultCard({
       >
         {clipExcerpt(result.content)}
       </p>
+
+      <AnswersList
+        answers={result.answers}
+        pickedIndex={pickedIndex}
+        onPick={setPickedIndex}
+      />
+
+      {answered ? (
+        <AnswerFeedback
+          answers={result.answers}
+          pickedIndex={pickedIndex}
+          explanation={result.explanation}
+        />
+      ) : null}
+
       <footer
         style={{
           display: "flex",
@@ -184,91 +183,7 @@ export function ResultCard({
           score {result.score.toFixed(2)}
         </span>
       </footer>
-
-      <RevealControls
-        revealState={revealState}
-        hasAnswered={hasAnswered}
-        onExpand={expand}
-        onCollapse={collapse}
-        answersId={answersId}
-      />
-
-      {revealState !== "collapsed" ? (
-        <AnswersPanel
-          id={answersId}
-          answers={result.answers}
-          explanation={result.explanation}
-          revealState={revealState}
-          pickedIndex={pickedIndex}
-          onPick={pickAnswer}
-        />
-      ) : null}
     </article>
-  );
-}
-
-const BUTTON_BASE_STYLE = {
-  padding: "0.35rem 0.8rem",
-  fontSize: "0.82rem",
-  fontWeight: 500,
-  borderRadius: 6,
-  cursor: "pointer",
-  border: "1px solid transparent",
-} as const;
-
-function RevealControls({
-  revealState,
-  hasAnswered,
-  onExpand,
-  onCollapse,
-  answersId,
-}: {
-  revealState: RevealState;
-  hasAnswered: boolean;
-  onExpand: () => void;
-  onCollapse: () => void;
-  answersId: string;
-}): ReactElement {
-  if (revealState === "collapsed") {
-    return (
-      <div style={{ marginTop: "0.2rem" }}>
-        <button
-          type="button"
-          data-testid="reveal-options-button"
-          aria-expanded={false}
-          aria-controls={answersId}
-          onClick={onExpand}
-          style={{
-            ...BUTTON_BASE_STYLE,
-            color: "#1e3a8a",
-            background: "#eff6ff",
-            borderColor: "#bfdbfe",
-          }}
-        >
-          {hasAnswered ? "Show answer" : "Show answer options"}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop: "0.2rem" }}>
-      <button
-        type="button"
-        data-testid="hide-reveal-button"
-        aria-expanded={true}
-        aria-controls={answersId}
-        onClick={onCollapse}
-        style={{
-          ...BUTTON_BASE_STYLE,
-          color: "#374151",
-          background: "transparent",
-          borderColor: "#e5e7eb",
-        }}
-      >
-        Hide
-      </button>
-    </div>
   );
 }
 
@@ -277,10 +192,9 @@ type AnswerRole = "neutral" | "correct" | "incorrect-pick";
 function classifyAnswer(
   index: number,
   answer: SearchAnswer,
-  revealState: RevealState,
   pickedIndex: number | null,
 ): AnswerRole {
-  if (revealState !== "answered") return "neutral";
+  if (pickedIndex === null) return "neutral";
   if (answer.is_correct) return "correct";
   if (index === pickedIndex) return "incorrect-pick";
   return "neutral";
@@ -319,175 +233,150 @@ const ROLE_STYLES: Record<
   },
 };
 
-function AnswersPanel({
-  id,
+function AnswersList({
   answers,
-  explanation,
-  revealState,
   pickedIndex,
   onPick,
 }: {
-  id: string;
   answers: SearchAnswer[];
-  explanation: string;
-  revealState: RevealState;
   pickedIndex: number | null;
   onPick: (index: number) => void;
 }): ReactElement {
-  const answered = revealState === "answered";
-  const pickedAnswer =
-    pickedIndex !== null ? (answers[pickedIndex] ?? null) : null;
-  const wasCorrect = pickedAnswer?.is_correct === true;
+  const answered = pickedIndex !== null;
 
   return (
-    <div
-      id={id}
-      data-testid="answers-panel"
-      data-reveal-state={revealState}
+    <ol
+      data-testid="answers-list"
       style={{
+        margin: 0,
+        paddingLeft: 0,
+        listStyle: "none",
         display: "flex",
         flexDirection: "column",
-        gap: "0.5rem",
-        marginTop: "0.4rem",
-        padding: "0.7rem 0.85rem",
-        background: "#fafafa",
-        border: "1px solid #ececec",
-        borderRadius: 8,
+        gap: "0.35rem",
       }}
     >
-      {!answered ? (
-        <p
-          data-testid="answers-prompt"
-          style={{
-            margin: 0,
-            color: "#6b7280",
-            fontSize: "0.82rem",
-            fontStyle: "italic",
-          }}
-        >
-          Pick the answer you think is correct.
-        </p>
-      ) : (
-        <FeedbackBanner wasCorrect={wasCorrect} />
-      )}
+      {answers.map((a, i) => {
+        const letter = OPTION_LETTERS[i] ?? String(i + 1);
+        const role = classifyAnswer(i, a, pickedIndex);
+        const palette = ROLE_STYLES[role];
+        const isPicked = pickedIndex === i;
 
-      <ol
-        style={{
-          margin: 0,
-          paddingLeft: 0,
-          listStyle: "none",
+        const content = (
+          <>
+            <span
+              aria-hidden
+              style={{
+                fontWeight: 600,
+                color: palette.accent,
+                minWidth: "1.4rem",
+              }}
+            >
+              {letter}.
+            </span>
+            <span style={{ flex: 1, textAlign: "left" }}>{a.content}</span>
+            {role === "correct" ? (
+              <span
+                aria-label={isPicked ? "your correct answer" : "correct answer"}
+                data-testid="correct-marker"
+                style={{ color: "#059669", fontWeight: 700 }}
+              >
+                ✓
+              </span>
+            ) : null}
+            {role === "incorrect-pick" ? (
+              <span
+                aria-label="your incorrect pick"
+                data-testid="incorrect-marker"
+                style={{ color: "#dc2626", fontWeight: 700 }}
+              >
+                ✗
+              </span>
+            ) : null}
+          </>
+        );
+
+        const commonStyle = {
           display: "flex",
-          flexDirection: "column",
-          gap: "0.3rem",
+          alignItems: "center",
+          gap: "0.55rem",
+          padding: "0.5rem 0.65rem",
+          borderRadius: 6,
+          fontSize: "0.92rem",
+          color: palette.color,
+          background: palette.background,
+          border: `1px solid ${palette.border === "transparent" ? "#e5e7eb" : palette.border}`,
+          fontWeight: palette.weight,
+          width: "100%",
+          textAlign: "left" as const,
+        };
+
+        return (
+          <li key={i} style={{ listStyle: "none" }}>
+            {answered ? (
+              <div
+                data-testid="answer-option"
+                data-role={role}
+                data-picked={isPicked ? "true" : "false"}
+                style={commonStyle}
+              >
+                {content}
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-testid="answer-option"
+                data-role={role}
+                data-picked="false"
+                onClick={() => onPick(i)}
+                style={{ ...commonStyle, cursor: "pointer" }}
+              >
+                {content}
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function AnswerFeedback({
+  answers,
+  pickedIndex,
+  explanation,
+}: {
+  answers: SearchAnswer[];
+  pickedIndex: number;
+  explanation: string;
+}): ReactElement {
+  const wasCorrect = answers[pickedIndex]?.is_correct === true;
+  return (
+    <div
+      data-testid="answer-feedback"
+      data-result={wasCorrect ? "correct" : "incorrect"}
+      style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}
+    >
+      <FeedbackBanner wasCorrect={wasCorrect} />
+      <div
+        data-testid="answer-explanation"
+        style={{
+          color: "#374151",
+          fontSize: "0.9rem",
+          lineHeight: 1.55,
+          padding: "0.55rem 0.65rem",
+          background: "#fafafa",
+          border: "1px solid #ececec",
+          borderRadius: 6,
         }}
       >
-        {answers.map((a, i) => {
-          const letter = OPTION_LETTERS[i] ?? String(i + 1);
-          const role = classifyAnswer(i, a, revealState, pickedIndex);
-          const palette = ROLE_STYLES[role];
-          const isPicked = pickedIndex === i;
-
-          const content = (
-            <>
-              <span
-                aria-hidden
-                style={{
-                  fontWeight: 600,
-                  color: palette.accent,
-                  minWidth: "1.4rem",
-                }}
-              >
-                {letter}.
-              </span>
-              <span style={{ flex: 1, textAlign: "left" }}>{a.content}</span>
-              {role === "correct" ? (
-                <span
-                  aria-label={isPicked ? "your correct answer" : "correct answer"}
-                  data-testid="correct-marker"
-                  style={{ color: "#059669", fontWeight: 700 }}
-                >
-                  ✓
-                </span>
-              ) : null}
-              {role === "incorrect-pick" ? (
-                <span
-                  aria-label="your incorrect pick"
-                  data-testid="incorrect-marker"
-                  style={{ color: "#dc2626", fontWeight: 700 }}
-                >
-                  ✗
-                </span>
-              ) : null}
-            </>
-          );
-
-          const commonStyle = {
-            display: "flex",
-            alignItems: "center",
-            gap: "0.55rem",
-            padding: "0.45rem 0.6rem",
-            borderRadius: 6,
-            fontSize: "0.92rem",
-            color: palette.color,
-            background: palette.background,
-            border: `1px solid ${palette.border}`,
-            fontWeight: palette.weight,
-            width: "100%",
-            textAlign: "left" as const,
-          };
-
-          return (
-            <li key={i} style={{ listStyle: "none" }}>
-              {answered ? (
-                <div
-                  data-testid="answer-option"
-                  data-role={role}
-                  data-picked={isPicked ? "true" : "false"}
-                  style={commonStyle}
-                >
-                  {content}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  data-testid="answer-option"
-                  data-role={role}
-                  data-picked="false"
-                  onClick={() => onPick(i)}
-                  style={{
-                    ...commonStyle,
-                    cursor: "pointer",
-                    borderColor: "#e5e7eb",
-                  }}
-                >
-                  {content}
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {answered ? (
-        <div
-          data-testid="answer-explanation"
-          style={{
-            marginTop: "0.3rem",
-            paddingTop: "0.55rem",
-            borderTop: "1px solid #e5e7eb",
-            color: "#374151",
-            fontSize: "0.9rem",
-            lineHeight: 1.55,
-          }}
+        <strong
+          style={{ display: "block", marginBottom: "0.2rem", color: "#111827" }}
         >
-          <strong
-            style={{ display: "block", marginBottom: "0.2rem", color: "#111827" }}
-          >
-            Explanation
-          </strong>
-          {explanation}
-        </div>
-      ) : null}
+          Explanation
+        </strong>
+        {explanation}
+      </div>
     </div>
   );
 }
