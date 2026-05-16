@@ -69,15 +69,42 @@ describe("ResultCard", () => {
     );
   });
 
-  it("clips long content to an excerpt", () => {
-    const longContent = "Lorem ipsum ".repeat(60); // ~720 chars
+  it("renders the full question content without clipping", () => {
+    // Regression guard: cards are the question the student has to answer,
+    // not a teaser. Clipping would force them to act on incomplete text.
+    const longContent =
+      "A 68-year-old man with poorly controlled hypertension and type 2 " +
+      "diabetes presents to the emergency department with progressively " +
+      "worsening shortness of breath over the past four days, bilateral " +
+      "lower-extremity swelling, orthopnea requiring three pillows at " +
+      "night, paroxysmal nocturnal dyspnea, and an elevated jugular " +
+      "venous pressure on examination. Which of the following is the " +
+      "single most likely cause of this patient's presentation?";
+    expect(longContent.length).toBeGreaterThan(220);
     const html = renderToStaticMarkup(
       <ResultCard
         ordinal={1}
         result={{ ...SAMPLE_RESULT, content: longContent }}
       />,
     );
-    expect(html).toContain("…");
+    expect(html).not.toContain("…");
+    // The full final sentence — would have been clipped under the old
+    // 220-char rule — must be present in the rendered card.
+    expect(html).toContain(
+      "most likely cause of this patient&#x27;s presentation?",
+    );
+  });
+
+  it("collapses whitespace noise but keeps the full text", () => {
+    const messyContent =
+      "Line one.\n\n  Line two with    extra spaces.\nLine three.";
+    const html = renderToStaticMarkup(
+      <ResultCard
+        ordinal={1}
+        result={{ ...SAMPLE_RESULT, content: messyContent }}
+      />,
+    );
+    expect(html).toContain("Line one. Line two with extra spaces. Line three.");
   });
 
   it("hides feedback and explanation until the student has picked an answer", () => {

@@ -70,12 +70,12 @@ export function BloomBadge({ level }: { level: BloomLevel }): ReactElement {
   );
 }
 
-function clipExcerpt(content: string, max = 220): string {
-  const cleaned = content.replace(/\s+/g, " ").trim();
-  if (cleaned.length <= max) return cleaned;
-  const cut = cleaned.slice(0, max);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut}…`;
+function normalizeQuestionText(content: string): string {
+  // Collapse any weird whitespace (newline soup from JSON, double-spaces from
+  // the LLM enrichment payload, etc.) but keep the full text. The card IS
+  // the question the student has to answer — clipping it would force the
+  // student to act on a teaser.
+  return content.replace(/\s+/g, " ").trim();
 }
 
 const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
@@ -147,7 +147,7 @@ export function ResultCard({
           lineHeight: 1.55,
         }}
       >
-        {clipExcerpt(result.content)}
+        {normalizeQuestionText(result.content)}
       </p>
 
       <AnswersList
