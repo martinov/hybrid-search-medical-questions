@@ -59,6 +59,27 @@ export function App(): ReactElement {
           const toolStatus = describeToolActivity(message.parts);
           const isUser = message.role === "user";
           const hasText = text.length > 0;
+
+          // When the search tool returns results, the cards ARE the response.
+          // Any framing prose the model emits ("Below are some questions I
+          // found...") is redundant noise; we render the cards standalone,
+          // without a chat bubble or "Netea" label, and ignore the text
+          // entirely. Bubble chrome is reserved for prose-only responses
+          // (no_match with reformulation suggestions, multi-turn ordinal
+          // refs, refinements) and for user messages.
+          if (!isUser && toolOutput?.kind === "results") {
+            return (
+              <div
+                key={message.id}
+                data-role={message.role}
+                data-message-shape="results-only"
+                style={{ margin: "0.9rem 0" }}
+              >
+                <ResultsList output={toolOutput} />
+              </div>
+            );
+          }
+
           return (
             <div
               key={message.id}
@@ -89,12 +110,8 @@ export function App(): ReactElement {
                   <ActivityIndicator label="Thinking…" />
                 ) : null}
               </div>
-              {toolOutput ? (
-                toolOutput.kind === "results" ? (
-                  <ResultsList output={toolOutput} />
-                ) : (
-                  <NoMatchPanel output={toolOutput} />
-                )
+              {toolOutput?.kind === "no_match" ? (
+                <NoMatchPanel output={toolOutput} />
               ) : null}
             </div>
           );

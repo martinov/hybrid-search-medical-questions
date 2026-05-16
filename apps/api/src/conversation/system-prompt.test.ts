@@ -13,10 +13,11 @@ describe("SYSTEM_PROMPT formatting policy", () => {
     expect(SYSTEM_PROMPT).toMatch(/Formatting policy/i);
   });
 
-  it("forbids re-listing tool results in prose (cards render them)", () => {
-    // Regression guard: the user reported every result rendering twice when
-    // the prompt told the model to emit a markdown ordered list of results.
-    expect(SYSTEM_PROMPT).toMatch(/Do NOT list each result/i);
+  it("instructs the model to emit no text when searchQuestions returns results", () => {
+    // Regression guard: even brief framing prose ('Below are some questions
+    // I found:') is redundant noise once the UI renders cards. The prompt
+    // must require silence in the results branch, not just 'don't list'.
+    expect(SYSTEM_PROMPT).toMatch(/Emit NO text/i);
     expect(SYSTEM_PROMPT.toLowerCase()).toContain("card");
   });
 
