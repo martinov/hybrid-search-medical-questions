@@ -96,10 +96,15 @@ export function ResultCard({
   const [revealState, setRevealState] = useState<RevealState>(initialRevealState);
   const [pickedIndex, setPickedIndex] = useState<number | null>(initialPickedIndex);
   const answersId = `answers-${result.id}`;
+  const hasAnswered = pickedIndex !== null;
 
-  const showOptions = (): void => {
-    setRevealState("options");
-    setPickedIndex(null);
+  // Once a card has been answered the result is sticky for this session:
+  // collapsing only hides the UI, it does NOT clear the pick, and re-expanding
+  // brings back the answered state (pick + feedback + explanation). Letting
+  // the student round-trip through Hide -> Show to retry would be theater —
+  // they already know which option is correct.
+  const expand = (): void => {
+    setRevealState(hasAnswered ? "answered" : "options");
   };
   const pickAnswer = (index: number): void => {
     setPickedIndex(index);
@@ -107,11 +112,6 @@ export function ResultCard({
   };
   const collapse = (): void => {
     setRevealState("collapsed");
-    setPickedIndex(null);
-  };
-  const tryAgain = (): void => {
-    setRevealState("options");
-    setPickedIndex(null);
   };
 
   return (
@@ -187,9 +187,9 @@ export function ResultCard({
 
       <RevealControls
         revealState={revealState}
-        onShowOptions={showOptions}
+        hasAnswered={hasAnswered}
+        onExpand={expand}
         onCollapse={collapse}
-        onTryAgain={tryAgain}
         answersId={answersId}
       />
 
@@ -218,15 +218,15 @@ const BUTTON_BASE_STYLE = {
 
 function RevealControls({
   revealState,
-  onShowOptions,
+  hasAnswered,
+  onExpand,
   onCollapse,
-  onTryAgain,
   answersId,
 }: {
   revealState: RevealState;
-  onShowOptions: () => void;
+  hasAnswered: boolean;
+  onExpand: () => void;
   onCollapse: () => void;
-  onTryAgain: () => void;
   answersId: string;
 }): ReactElement {
   if (revealState === "collapsed") {
@@ -237,7 +237,7 @@ function RevealControls({
           data-testid="reveal-options-button"
           aria-expanded={false}
           aria-controls={answersId}
-          onClick={onShowOptions}
+          onClick={onExpand}
           style={{
             ...BUTTON_BASE_STYLE,
             color: "#1e3a8a",
@@ -245,51 +245,14 @@ function RevealControls({
             borderColor: "#bfdbfe",
           }}
         >
-          Show answer options
-        </button>
-      </div>
-    );
-  }
-
-  if (revealState === "options") {
-    return (
-      <div style={{ marginTop: "0.2rem" }}>
-        <button
-          type="button"
-          data-testid="hide-reveal-button"
-          aria-expanded={true}
-          aria-controls={answersId}
-          onClick={onCollapse}
-          style={{
-            ...BUTTON_BASE_STYLE,
-            color: "#374151",
-            background: "transparent",
-            borderColor: "#e5e7eb",
-          }}
-        >
-          Hide
+          {hasAnswered ? "Show answer" : "Show answer options"}
         </button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{ display: "flex", gap: "0.5rem", marginTop: "0.2rem", flexWrap: "wrap" }}
-    >
-      <button
-        type="button"
-        data-testid="try-again-button"
-        onClick={onTryAgain}
-        style={{
-          ...BUTTON_BASE_STYLE,
-          color: "#1e3a8a",
-          background: "#eff6ff",
-          borderColor: "#bfdbfe",
-        }}
-      >
-        Try again
-      </button>
+    <div style={{ marginTop: "0.2rem" }}>
       <button
         type="button"
         data-testid="hide-reveal-button"

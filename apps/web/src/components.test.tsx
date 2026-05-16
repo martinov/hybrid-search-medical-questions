@@ -83,6 +83,26 @@ describe("ResultCard", () => {
     // Answer choices and explanation should not be in the DOM at all yet.
     expect(html).not.toContain("Acute decompensated heart failure");
     expect(html).not.toContain("Elevated JVP plus");
+    // Un-answered card → first-attempt button label.
+    expect(html).toContain("Show answer options");
+  });
+
+  it("when collapsed after an answer was picked, the expand button label changes and the pick persists", () => {
+    // Sticky-answered guard: a card that was answered and then hidden must
+    // not let the student round-trip Hide -> Show to retry the question.
+    // The pickedIndex stays on, and the button label signals 'review' not
+    // 'pick'.
+    const html = renderToStaticMarkup(
+      <ResultCard
+        ordinal={1}
+        result={SAMPLE_RESULT}
+        initialRevealState="collapsed"
+        initialPickedIndex={1}
+      />,
+    );
+    expect(html).toContain('data-reveal-state="collapsed"');
+    expect(html).toContain("Show answer");
+    expect(html).not.toContain("Show answer options");
   });
 
   it("renders answer choices as clickable buttons in the options state", () => {
@@ -127,8 +147,11 @@ describe("ResultCard", () => {
     );
     expect(html).toContain("Explanation");
     expect(html).toContain("Elevated JVP plus");
-    // After answering the card offers a "Try again" affordance.
-    expect(html).toContain('data-testid="try-again-button"');
+    // Once the answer is revealed there is no "Try again" — retrying is
+    // pointless theater after the green option is visible. The student
+    // collapses and re-expands to attempt a fresh question.
+    expect(html).not.toContain('data-testid="try-again-button"');
+    expect(html).toContain('data-testid="hide-reveal-button"');
   });
 
   it("highlights both the student's wrong pick and the correct answer when the pick is wrong", () => {
