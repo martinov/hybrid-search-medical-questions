@@ -85,7 +85,7 @@ describe("ResultCard", () => {
     expect(html).not.toContain("Elevated JVP plus");
   });
 
-  it("renders all answer choices without a correctness marker in the options state", () => {
+  it("renders answer choices as clickable buttons in the options state", () => {
     const html = renderToStaticMarkup(
       <ResultCard
         ordinal={1}
@@ -96,28 +96,61 @@ describe("ResultCard", () => {
     expect(html).toContain('data-reveal-state="options"');
     expect(html).toContain("Acute decompensated heart failure");
     expect(html).toContain("Pulmonary embolism");
-    // No correct-answer marker yet — the student is meant to attempt first.
+    expect(html).toMatch(
+      /<button[^>]*data-testid="answer-option"[\s\S]*Acute decompensated heart failure/,
+    );
+    // No correctness signal yet — the student is meant to attempt first.
     expect(html).not.toContain('data-testid="correct-marker"');
+    expect(html).not.toContain('data-testid="incorrect-marker"');
+    expect(html).not.toContain('data-testid="feedback-banner"');
     expect(html).not.toContain("Elevated JVP plus");
-    // The next-step button is the solution-reveal action.
-    expect(html).toContain('data-testid="reveal-solution-button"');
+    // A "pick the answer" prompt should be visible.
+    expect(html).toContain('data-testid="answers-prompt"');
   });
 
-  it("marks the correct answer and shows the explanation in the solution state", () => {
+  it("gives positive feedback when the student picks the correct answer", () => {
     const html = renderToStaticMarkup(
       <ResultCard
         ordinal={1}
         result={SAMPLE_RESULT}
-        initialRevealState="solution"
+        initialRevealState="answered"
+        initialPickedIndex={0}
       />,
     );
-    expect(html).toContain('data-reveal-state="solution"');
+    expect(html).toContain('data-reveal-state="answered"');
+    expect(html).toContain('data-result="correct"');
     expect(html).toContain('data-testid="correct-marker"');
-    // The correct answer is the one with the `data-correct="true"` flag.
+    // The picked option is the correct one — no incorrect marker should render.
+    expect(html).not.toContain('data-testid="incorrect-marker"');
     expect(html).toMatch(
-      /data-correct="true"[\s\S]*Acute decompensated heart failure/,
+      /data-role="correct"[^>]*data-picked="true"[\s\S]*Acute decompensated heart failure/,
     );
+    expect(html).toContain("Explanation");
     expect(html).toContain("Elevated JVP plus");
+    // After answering the card offers a "Try again" affordance.
+    expect(html).toContain('data-testid="try-again-button"');
+  });
+
+  it("highlights both the student's wrong pick and the correct answer when the pick is wrong", () => {
+    const html = renderToStaticMarkup(
+      <ResultCard
+        ordinal={1}
+        result={SAMPLE_RESULT}
+        initialRevealState="answered"
+        initialPickedIndex={1}
+      />,
+    );
+    expect(html).toContain('data-result="incorrect"');
+    expect(html).toContain('data-testid="incorrect-marker"');
+    expect(html).toContain('data-testid="correct-marker"');
+    // The picked option (index 1, Pulmonary embolism) carries the incorrect role.
+    expect(html).toMatch(
+      /data-role="incorrect-pick"[^>]*data-picked="true"[\s\S]*Pulmonary embolism/,
+    );
+    // The actual correct option (index 0) is still flagged correct.
+    expect(html).toMatch(
+      /data-role="correct"[\s\S]*Acute decompensated heart failure/,
+    );
     expect(html).toContain("Explanation");
   });
 });
