@@ -176,12 +176,13 @@ export function ResultCard({
       >
         <BloomBadge level={result.bloom_level} />
         <span data-testid="result-card-specialty">{result.medical_specialty}</span>
-        <span aria-hidden style={{ color: "#d1d5db" }}>
-          •
-        </span>
-        <span title="Hybrid relevance score" style={{ fontVariantNumeric: "tabular-nums" }}>
-          score {result.score.toFixed(2)}
-        </span>
+        {/*
+          RRF score is intentionally not displayed. The raw value (`Σ 1/(k+rank)`
+          with k=60) tops out near 0.033 in the best case, which reads as
+          "2% relevant" to a non-RRF-aware student. It is still used
+          server-side to order the cards; the ordinal in the header is the
+          student-visible relevance signal.
+        */}
       </footer>
     </article>
   );

@@ -60,7 +60,9 @@ describe("ResultCard", () => {
     expect(html).toContain("#2");
     expect(html).toContain('data-level="application"');
     expect(html).toContain("Cardiology");
-    expect(html).toContain("score 0.87");
+    // Raw RRF score is intentionally not surfaced — see ResultCard footer
+    // comment. The ordinal carries the student-visible relevance signal.
+    expect(html).not.toMatch(/score\s+\d/);
     // Options must be visible by default — no 'Show options' click required.
     expect(html).toContain("Acute decompensated heart failure");
     expect(html).toContain("Pulmonary embolism");
